@@ -23,18 +23,18 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
       bottom: {
         title: "Frequency (How Often)",
         mapsTo: "value",
-        scaleType: "linear",
+        scaleType: "linear" as const,
         domain: [1, 10]
       },
       left: {
         title: "Severity (How Painful)",
         mapsTo: "value2", 
-        scaleType: "linear",
+        scaleType: "linear" as const,
         domain: [1, 10]
       }
     },
     color: {
-      scale: GROUP_COLORS
+      scale: GROUP_COLORS as any
     },
     points: {
       radius: 8,
@@ -46,7 +46,7 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
         return `
           <div style="padding: 0.5rem;">
             <strong>Problem ${point.key}</strong><br/>
-            <span style="color: ${GROUP_COLORS[point.group]}">●</span> ${point.group}<br/>
+            <span style="color: ${(GROUP_COLORS as any)[point.group]}">●</span> ${point.group}<br/>
             Frequency: ${point.value}<br/>
             Severity: ${point.value2}
           </div>

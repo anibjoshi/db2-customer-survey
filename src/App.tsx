@@ -141,7 +141,7 @@ export default function App() {
         title: problem.title,
       };
     });
-  }, [submissions]);
+  }, [submissions, PROBLEMS]);
 
   const groupedProblems = useMemo(() => {
     const groups = new Map<string, typeof PROBLEMS>();
@@ -150,48 +150,11 @@ export default function App() {
       groups.set(problem.group, [...existing, problem]);
     });
     return groups;
-  }, []);
+  }, [PROBLEMS]);
 
   const sections = useMemo(() => Array.from(groupedProblems.entries()), [groupedProblems]);
   const totalSections = sections.length;
   const currentSection = sections[currentSectionIndex];
-
-  // Show loading state
-  if (loading) {
-    return (
-      <Theme theme="g90">
-        <Header aria-label="Zora Survey">
-          <HeaderName href="#" prefix="IBM">
-            Zora Survey
-          </HeaderName>
-        </Header>
-        <Content id="main-content">
-          <div style={{ padding: '4rem', textAlign: 'center' }}>
-            <Heading>Loading survey...</Heading>
-          </div>
-        </Content>
-      </Theme>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <Theme theme="g90">
-        <Header aria-label="Zora Survey">
-          <HeaderName href="#" prefix="IBM">
-            Zora Survey
-          </HeaderName>
-        </Header>
-        <Content id="main-content">
-          <div style={{ padding: '4rem', textAlign: 'center' }}>
-            <Heading>Error loading survey</Heading>
-            <p style={{ marginTop: '1rem' }}>{error}</p>
-          </div>
-        </Content>
-      </Theme>
-    );
-  }
 
   const handleStartSurvey = useCallback(() => {
     if (name.trim()) {
@@ -230,6 +193,43 @@ export default function App() {
 
     setCurrentStep('results');
   }, [responses, notes, submissions]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <Theme theme="g90">
+        <Header aria-label="Zora Survey">
+          <HeaderName href="#" prefix="IBM">
+            Zora Survey
+          </HeaderName>
+        </Header>
+        <Content id="main-content">
+          <div style={{ padding: '4rem', textAlign: 'center' }}>
+            <Heading>Loading survey...</Heading>
+          </div>
+        </Content>
+      </Theme>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Theme theme="g90">
+        <Header aria-label="Zora Survey">
+          <HeaderName href="#" prefix="IBM">
+            Zora Survey
+          </HeaderName>
+        </Header>
+        <Content id="main-content">
+          <div style={{ padding: '4rem', textAlign: 'center' }}>
+            <Heading>Error loading survey</Heading>
+            <p style={{ marginTop: '1rem' }}>{error}</p>
+          </div>
+        </Content>
+      </Theme>
+    );
+  }
 
   return (
     <Theme theme="g90">
@@ -434,7 +434,7 @@ export default function App() {
                           key={problem.id}
                           problem={problem}
                           response={response}
-                          onUpdate={handleResponseUpdate}
+                          onUpdate={(updated) => handleResponseUpdate(problem.id, updated)}
                         />
                       );
                     })}
