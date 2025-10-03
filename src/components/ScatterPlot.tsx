@@ -19,6 +19,7 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
 
   const options = {
     title: "Priority Matrix",
+    theme: "g90",
     axes: {
       bottom: {
         title: "Frequency (How Often)",
@@ -44,7 +45,7 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
       customHTML: (data: any) => {
         const point = data[0];
         return `
-          <div style="padding: 0.5rem;">
+          <div style="padding: 0.5rem; background-color: #262626; color: #f4f4f4; border-radius: 4px;">
             <strong>Problem ${point.key}</strong><br/>
             <span style="color: ${(GROUP_COLORS as any)[point.group]}">●</span> ${point.group}<br/>
             Frequency: ${point.value}<br/>
@@ -70,8 +71,8 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
     <div style={{ 
       width: '100%', 
       height: '500px',
-      backgroundColor: 'white',
-      border: '1px solid #e0e0e0',
+      backgroundColor: '#262626',
+      border: '1px solid #393939',
       borderRadius: '4px',
       padding: '1rem'
     }}>

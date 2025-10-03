@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, Section, Heading, InlineNotification } from '@carbon/react';
-import { Download, TrashCan } from '@carbon/icons-react';
+import { Download, DataBase } from '@carbon/icons-react';
 import { AggregatePoint, Problem, ProblemGroup } from '../types';
 import { ScatterPlot, Legend } from '../components';
 
@@ -8,34 +8,23 @@ interface ResultsPageProps {
   aggregates: AggregatePoint[];
   problems: Problem[];
   submissionCount: number;
-  onTakeAnother: () => void;
   onExport: () => void;
-  onClearAll: () => void;
+  onExportDatabase?: () => void;
 }
 
 export const ResultsPage: React.FC<ResultsPageProps> = ({
   aggregates,
   problems,
   submissionCount,
-  onTakeAnother,
   onExport,
-  onClearAll
+  onExportDatabase
 }) => {
   return (
     <div>
-      <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-        <Heading style={{ marginBottom: '1rem', fontSize: '2rem' }}>
-          Thank You!
-        </Heading>
-        <p style={{ fontSize: '1.125rem', opacity: 0.9 }}>
-          Your response has been saved. Here's how all submissions stack up:
-        </p>
-      </div>
-
       <Section level={3} style={{ marginBottom: '4rem' }}>
         <div style={{ marginBottom: '3rem' }}>
           <Heading style={{ marginBottom: '0.5rem' }}>
-            Priority Matrix
+            Results
           </Heading>
           <p style={{ 
             fontSize: '0.875rem',
@@ -66,33 +55,29 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
         gap: '1rem',
         justifyContent: 'center',
         paddingTop: '2rem',
-        borderTop: '1px solid rgba(255,255,255,0.1)'
+        borderTop: '1px solid rgba(255,255,255,0.1)',
+        flexWrap: 'wrap'
       }}>
-        <Button
-          onClick={onTakeAnother}
-          kind="primary"
-          size="lg"
-        >
-          Take Another Survey
-        </Button>
         <Button
           onClick={onExport}
           disabled={submissionCount === 0}
-          kind="secondary"
+          kind="primary"
           renderIcon={Download}
           size="lg"
         >
-          Export Data (CSV)
+          Export CSV
         </Button>
-        <Button
-          onClick={onClearAll}
-          disabled={submissionCount === 0}
-          kind="danger--tertiary"
-          renderIcon={TrashCan}
-          size="lg"
-        >
-          Clear All Data
-        </Button>
+        {onExportDatabase && (
+          <Button
+            onClick={onExportDatabase}
+            disabled={submissionCount === 0}
+            kind="secondary"
+            renderIcon={DataBase}
+            size="lg"
+          >
+            Export Database
+          </Button>
+        )}
       </div>
     </div>
   );
