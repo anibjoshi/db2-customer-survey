@@ -1,12 +1,25 @@
-import React from 'react';
-import { Button, Section, Heading, InlineNotification } from '@carbon/react';
+import React, { useMemo } from 'react';
+import { 
+  Button, 
+  Section, 
+  Heading, 
+  InlineNotification,
+  DataTable,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell
+} from '@carbon/react';
 import { Download, DataBase } from '@carbon/icons-react';
-import { AggregatePoint, Problem, ProblemGroup } from '../types';
+import { AggregatePoint, Problem, ProblemGroup, SurveySubmission } from '../types';
 import { ScatterPlot, Legend } from '../components';
 
 interface ResultsPageProps {
   aggregates: AggregatePoint[];
   problems: Problem[];
+  submissions: SurveySubmission[];
   submissionCount: number;
   onExport: () => void;
   onExportDatabase?: () => void;
@@ -15,13 +28,31 @@ interface ResultsPageProps {
 export const ResultsPage: React.FC<ResultsPageProps> = ({
   aggregates,
   problems,
+  submissions,
   submissionCount,
   onExport,
   onExportDatabase
 }) => {
+  // Prepare table data
+  const tableRows = useMemo(() => {
+    return submissions.map((submission, index) => {
+      const avgFrequency = submission.responses.reduce((sum, r) => sum + r.frequency, 0) / submission.responses.length;
+      const avgSeverity = submission.responses.reduce((sum, r) => sum + r.severity, 0) / submission.responses.length;
+      
+      return {
+        id: submission.id,
+        index: index + 1,
+        timestamp: new Date(submission.timestamp).toLocaleString(),
+        responseCount: submission.responses.length,
+        avgFrequency: avgFrequency.toFixed(1),
+        avgSeverity: avgSeverity.toFixed(1),
+        hasNotes: submission.notes ? 'Yes' : 'No'
+      };
+    });
+  }, [submissions]);
   return (
-    <div>
-      <Section level={3} style={{ marginBottom: '4rem' }}>
+    <div style={{ marginTop: '-1rem' }}>
+      <Section level={3} style={{ marginBottom: '4rem', paddingTop: 0 }}>
         <div style={{ marginBottom: '3rem' }}>
           <Heading style={{ marginBottom: '0.5rem' }}>
             Results
@@ -48,6 +79,51 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           subtitle="Problems in the upper-right quadrant (Critical Priority) should be addressed first. Share this survey with more team members to get better insights."
           style={{ maxWidth: '100%' }}
         />
+      </Section>
+
+      {/* Submissions Table */}
+      <Section level={3} style={{ marginBottom: '4rem' }}>
+        <Heading style={{ marginBottom: '1.5rem' }}>
+          Survey Responses ({submissionCount})
+        </Heading>
+
+        {tableRows.length > 0 ? (
+          <div style={{ 
+            backgroundColor: '#262626',
+            border: '1px solid #393939',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeader>#</TableHeader>
+                  <TableHeader>Submission Date</TableHeader>
+                  <TableHeader>Problems Rated</TableHeader>
+                  <TableHeader>Avg Frequency</TableHeader>
+                  <TableHeader>Avg Severity</TableHeader>
+                  <TableHeader>Has Notes</TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {tableRows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>{row.index}</TableCell>
+                    <TableCell>{row.timestamp}</TableCell>
+                    <TableCell>{row.responseCount}</TableCell>
+                    <TableCell>{row.avgFrequency}</TableCell>
+                    <TableCell>{row.avgSeverity}</TableCell>
+                    <TableCell>{row.hasNotes}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <p style={{ opacity: 0.7, fontSize: '0.875rem' }}>
+            No submissions yet. Share the survey link to collect responses.
+          </p>
+        )}
       </Section>
 
       <div style={{ 

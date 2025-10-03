@@ -9,7 +9,7 @@ export const initDatabase = async (): Promise<void> => {
   if (db) return;
 
   const SQL = await initSqlJs({
-    locateFile: file => `https://sql.js.org/dist/${file}`
+    locateFile: (file: string) => `https://sql.js.org/dist/${file}`
   });
 
   // Try to load existing database from localStorage
@@ -120,7 +120,7 @@ export const exportDatabaseToFile = (): void => {
   if (!db) return;
 
   const data = db.export();
-  const blob = new Blob([data], { type: 'application/octet-stream' });
+  const blob = new Blob([new Uint8Array(data)], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   
   const link = document.createElement('a');

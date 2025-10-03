@@ -66,6 +66,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
     if (name.trim()) {
       setCurrentStep('section');
       setCurrentSectionIndex(0);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [name]);
 
@@ -75,6 +76,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
     } else {
       setCurrentStep('feedback');
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentSectionIndex, totalSections]);
 
   const handlePreviousSection = useCallback(() => {
@@ -83,6 +85,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
     } else {
       setCurrentStep('welcome');
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentSectionIndex]);
 
   const handleSubmitSurvey = useCallback(() => {
@@ -98,6 +101,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
       saveSubmission(submission, name, email);
       // Show thank you page
       setCurrentStep('thankyou');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error('Failed to save submission:', error);
       alert('Failed to save your response. Please try again.');

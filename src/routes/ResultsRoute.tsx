@@ -103,6 +103,7 @@ export const ResultsRoute: React.FC<ResultsRouteProps> = ({ problems }) => {
         <ResultsPage
           aggregates={aggregates}
           problems={problems}
+          submissions={submissions}
           submissionCount={submissions.length}
           onExport={handleExport}
           onExportDatabase={exportDatabaseToFile}
