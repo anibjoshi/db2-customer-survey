@@ -1,0 +1,29 @@
+/* Custom background overrides */
+.cds--content {
+  background-color: #171717 !important;
+}
+
+.cds--tile {
+  background-color: #262626 !important;
+}
+
+.cds--text-input,
+.cds--text-area {
+  background-color: #262626 !important;
+}
+
+.cds--notification {
+  background-color: #262626 !important;
+}
+
+/* Fix slider width */
+.cds--slider .cds--form-item {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.cds--slider-container {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+

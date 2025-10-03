@@ -1,0 +1,91 @@
+{
+  "title": "Db2 Zora Problem Prioritization",
+  "description": "Help us understand which database problems impact you most. This survey takes about 5-10 minutes.",
+  "sections": [
+    {
+      "id": "query-performance",
+      "name": "Query Performance & Tuning",
+      "problems": [
+        {
+          "id": 1,
+          "title": "Query performance keeps degrading over time"
+        },
+        {
+          "id": 2,
+          "title": "It's hard to identify the right indexes or MQTs for workload optimization"
+        },
+        {
+          "id": 3,
+          "title": "Query plans change unexpectedly and are hard to roll back"
+        }
+      ]
+    },
+    {
+      "id": "incident-analysis",
+      "name": "Incident Analysis & Resolution",
+      "problems": [
+        {
+          "id": 4,
+          "title": "Blocking and locking issues are hard to detect and resolve"
+        },
+        {
+          "id": 5,
+          "title": "Queries spill to disk without early warning"
+        },
+        {
+          "id": 6,
+          "title": "WLM queueing causes slowdowns that are difficult to diagnose"
+        },
+        {
+          "id": 7,
+          "title": "It's slow to understand what changed before an incident"
+        }
+      ]
+    },
+    {
+      "id": "monitoring-anomaly",
+      "name": "Monitoring & Anomaly Detection",
+      "problems": [
+        {
+          "id": 8,
+          "title": "Anomalies in system metrics are discovered too late (CPU, I/O, memory, storage, responsiveness, locks, rows read)"
+        },
+        {
+          "id": 9,
+          "title": "Forecasting and capacity planning are unreliable"
+        }
+      ]
+    },
+    {
+      "id": "maintenance-operations",
+      "name": "Maintenance & Operations",
+      "problems": [
+        {
+          "id": 10,
+          "title": "Deployment and upgrade processes are error-prone"
+        },
+        {
+          "id": 11,
+          "title": "Log management and analysis is painful (diag.log, archive logs, etc.)"
+        },
+        {
+          "id": 12,
+          "title": "Runstats and statistics often go stale without notice"
+        },
+        {
+          "id": 13,
+          "title": "Table health requires constant manual effort (skew, reorg, compression, tablespaces, indexes)"
+        },
+        {
+          "id": 14,
+          "title": "Scripts are scattered, fragile, and lack version control"
+        },
+        {
+          "id": 15,
+          "title": "Support tickets and diagnostic data collection are tedious"
+        }
+      ]
+    }
+  ]
+}
+
