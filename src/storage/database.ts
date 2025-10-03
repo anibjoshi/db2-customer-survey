@@ -109,7 +109,9 @@ export const getAllSubmissions = (): SurveySubmission[] => {
       id: id as string,
       timestamp: timestamp as string,
       responses,
-      notes: notes as string | undefined
+      notes: notes as string | undefined,
+      respondentName: name as string | undefined,
+      respondentEmail: email as string | undefined
     });
   });
 

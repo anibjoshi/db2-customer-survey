@@ -21,6 +21,8 @@ export interface SurveySubmission {
   responses: Response[];
   notes?: string;
   timestamp: string;
+  respondentName?: string;
+  respondentEmail?: string;
 }
 
 export interface AggregatePoint {

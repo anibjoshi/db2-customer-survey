@@ -1,20 +1,13 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { 
   Button, 
   Section, 
   Heading, 
-  InlineNotification,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell
+  InlineNotification
 } from '@carbon/react';
 import { Download, DataBase } from '@carbon/icons-react';
 import { AggregatePoint, Problem, ProblemGroup, SurveySubmission } from '../types';
-import { ScatterPlot, Legend } from '../components';
+import { ScatterPlot, Legend, ResponsesTable } from '../components';
 
 interface ResultsPageProps {
   aggregates: AggregatePoint[];
@@ -33,23 +26,6 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
   onExport,
   onExportDatabase
 }) => {
-  // Prepare table data
-  const tableRows = useMemo(() => {
-    return submissions.map((submission, index) => {
-      const avgFrequency = submission.responses.reduce((sum, r) => sum + r.frequency, 0) / submission.responses.length;
-      const avgSeverity = submission.responses.reduce((sum, r) => sum + r.severity, 0) / submission.responses.length;
-      
-      return {
-        id: submission.id,
-        index: index + 1,
-        timestamp: new Date(submission.timestamp).toLocaleString(),
-        responseCount: submission.responses.length,
-        avgFrequency: avgFrequency.toFixed(1),
-        avgSeverity: avgSeverity.toFixed(1),
-        hasNotes: submission.notes ? 'Yes' : 'No'
-      };
-    });
-  }, [submissions]);
   return (
     <div style={{ marginTop: '-1rem' }}>
       <Section level={3} style={{ marginBottom: '4rem', paddingTop: 0 }}>
@@ -87,38 +63,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           Survey Responses ({submissionCount})
         </Heading>
 
-        {tableRows.length > 0 ? (
-          <div style={{ 
-            backgroundColor: '#262626',
-            border: '1px solid #393939',
-            borderRadius: '4px',
-            overflow: 'hidden'
-          }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeader>#</TableHeader>
-                  <TableHeader>Submission Date</TableHeader>
-                  <TableHeader>Problems Rated</TableHeader>
-                  <TableHeader>Avg Frequency</TableHeader>
-                  <TableHeader>Avg Severity</TableHeader>
-                  <TableHeader>Has Notes</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {tableRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.index}</TableCell>
-                    <TableCell>{row.timestamp}</TableCell>
-                    <TableCell>{row.responseCount}</TableCell>
-                    <TableCell>{row.avgFrequency}</TableCell>
-                    <TableCell>{row.avgSeverity}</TableCell>
-                    <TableCell>{row.hasNotes}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+        {submissions.length > 0 ? (
+          <ResponsesTable submissions={submissions} problems={problems} />
         ) : (
           <p style={{ opacity: 0.7, fontSize: '0.875rem' }}>
             No submissions yet. Share the survey link to collect responses.
