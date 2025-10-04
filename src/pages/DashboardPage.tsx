@@ -237,8 +237,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             onClick={() => {
               setActiveTab('all');
               loadAllSubmissions();
-              // Trigger config reload to get latest questions
-              if (onReloadConfig) onReloadConfig();
             }}
             style={{
               padding: '1rem 1.5rem',
