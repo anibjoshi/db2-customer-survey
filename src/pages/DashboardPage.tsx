@@ -16,7 +16,7 @@ import { Add, Launch, TrashCan, Checkmark, StopFilled, View } from '@carbon/icon
 import { SurveySession, SurveySubmission, Problem, AggregatePoint } from '../types';
 import { sessionManager } from '../storage/sessionManager';
 import { api } from '../api/client';
-import { ResponsesTable, ScatterPlot, Legend, ConfigEditor } from '../components';
+import { ResponsesTable, ScatterPlot, Legend, ConfigEditor, AISummary } from '../components';
 import { calculateAverage } from '../utils';
 import { DEFAULT_RATING } from '../constants';
 import { SurveyConfig } from '../hooks/useSurveyConfig';
@@ -423,6 +423,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                   {selectedSessionSubmissions.length > 0 ? (
                     <>
+                      {/* AI Summary */}
+                      <AISummary 
+                        submissions={selectedSessionSubmissions}
+                        sessionId={selectedSessionId || undefined}
+                      />
+
                       {/* Priority Matrix for this session */}
                       <div style={{ marginBottom: '3rem' }}>
                         <div style={{ marginBottom: '1rem' }}>
@@ -468,6 +474,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {allSubmissions.length > 0 ? (
               <>
+                {/* AI Summary for All Results */}
+                <AISummary submissions={allSubmissions} />
+
                 {/* Aggregated Priority Matrix */}
                 <div style={{ marginBottom: '3rem' }}>
                   <div style={{ marginBottom: '1rem' }}>

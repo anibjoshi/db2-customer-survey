@@ -2,8 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import ibmdb from 'ibm_db';
 import dotenv from 'dotenv';
+import OpenAI from 'openai';
 
 dotenv.config();
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -494,6 +499,100 @@ app.delete('/api/config/problems/:id', async (req, res) => {
   }
 });
 
+// ============================================================================
+// AI SUMMARY ENDPOINT
+// ============================================================================
+
+// Generate AI summary for session or all results
+app.post('/api/ai-summary', async (req, res) => {
+  try {
+    const { sessionId, submissions } = req.body;
+    
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ error: 'AI service not configured' });
+    }
+
+    // Prepare data for AI analysis
+    const summary = {
+      totalResponses: submissions.length,
+      avgFrequency: {},
+      avgSeverity: {},
+      topConcerns: []
+    };
+
+    // Calculate averages per problem
+    const problemStats = {};
+    submissions.forEach(sub => {
+      sub.responses.forEach(resp => {
+        if (!problemStats[resp.problemId]) {
+          problemStats[resp.problemId] = { frequencies: [], severities: [] };
+        }
+        problemStats[resp.problemId].frequencies.push(resp.frequency);
+        problemStats[resp.problemId].severities.push(resp.severity);
+      });
+    });
+
+    // Get problem titles from config
+    const configData = await executeQuery('SELECT * FROM SURVEYS.CONFIG WHERE IS_ACTIVE = 1 ORDER BY CREATED_AT DESC FETCH FIRST 1 ROWS ONLY');
+    const sections = await executeQuery('SELECT * FROM SURVEYS.SECTIONS WHERE CONFIG_ID = ? ORDER BY DISPLAY_ORDER', [configData[0].ID]);
+    
+    const problemTitles = {};
+    for (const section of sections) {
+      const problems = await executeQuery('SELECT * FROM SURVEYS.PROBLEMS WHERE SECTION_ID = ? ORDER BY DISPLAY_ORDER', [section.ID]);
+      problems.forEach(p => {
+        problemTitles[p.ID] = { title: p.TITLE, section: section.NAME };
+      });
+    }
+
+    // Build analysis data
+    const analysisData = Object.entries(problemStats).map(([id, stats]) => {
+      const avgFreq = stats.frequencies.reduce((a, b) => a + b, 0) / stats.frequencies.length;
+      const avgSev = stats.severities.reduce((a, b) => a + b, 0) / stats.severities.length;
+      return {
+        id,
+        title: problemTitles[id]?.title || 'Unknown',
+        section: problemTitles[id]?.section || 'Unknown',
+        avgFrequency: avgFreq.toFixed(1),
+        avgSeverity: avgSev.toFixed(1),
+        score: (avgFreq * avgSev).toFixed(1)
+      };
+    }).sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
+
+    // Generate AI summary
+    const prompt = `Analyze these IBM Db2 survey results:
+
+Responses: ${submissions.length}
+
+Top problems (Frequency × Severity):
+${analysisData.slice(0, 5).map((p, i) => `${i + 1}. ${p.title} - Freq: ${p.avgFrequency}/10, Sev: ${p.avgSeverity}/10`).join('\n')}
+
+Provide a brief 2-3 sentence analysis of the main pain points and what they indicate about customer needs.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are a database consultant. Provide concise, actionable insights." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 200
+    });
+
+    res.json({
+      summary: completion.choices[0].message.content,
+      topProblems: analysisData.slice(0, 5),
+      metadata: {
+        responseCount: submissions.length,
+        generatedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error generating AI summary:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -507,4 +606,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Survey server running on http://localhost:${PORT}`);
   console.log(`📊 Database: IBM Db2`);
   console.log(`🔗 Connection configured`);
+  console.log(`🤖 AI Summary: ${process.env.OPENAI_API_KEY ? 'Enabled' : 'Disabled'}`);
 });
