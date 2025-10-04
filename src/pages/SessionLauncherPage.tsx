@@ -32,18 +32,23 @@ export const SessionLauncherPage: React.FC<SessionLauncherPageProps> = ({
   const [newSessionDesc, setNewSessionDesc] = useState('');
 
   useEffect(() => {
-    setSessions(sessionManager.getAllSessions());
+    const loadSessions = async () => {
+      const sessions = await sessionManager.getAllSessions();
+      setSessions(sessions);
+    };
+    loadSessions();
   }, []);
 
-  const handleCreateSession = () => {
+  const handleCreateSession = async () => {
     if (!newSessionName.trim()) return;
 
-    const session = sessionManager.createSession(
+    await sessionManager.createSession(
       newSessionName.trim(),
       newSessionDesc.trim() || undefined
     );
 
-    setSessions(sessionManager.getAllSessions());
+    const sessions = await sessionManager.getAllSessions();
+    setSessions(sessions);
     setNewSessionName('');
     setNewSessionDesc('');
     setShowCreateForm(false);
@@ -54,10 +59,11 @@ export const SessionLauncherPage: React.FC<SessionLauncherPageProps> = ({
     onLaunchSurvey(sessionId);
   };
 
-  const handleDeleteSession = (sessionId: string) => {
+  const handleDeleteSession = async (sessionId: string) => {
     if (window.confirm('Are you sure you want to delete this session? This will not delete the responses.')) {
-      sessionManager.deleteSession(sessionId);
-      setSessions(sessionManager.getAllSessions());
+      await sessionManager.deleteSession(sessionId);
+      const sessions = await sessionManager.getAllSessions();
+      setSessions(sessions);
     }
   };
 

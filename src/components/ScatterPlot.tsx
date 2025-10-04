@@ -24,13 +24,11 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
       bottom: {
         title: "Frequency (How Often)",
         mapsTo: "value",
-        scaleType: "linear" as const,
         domain: [1, 10]
       },
       left: {
         title: "Severity (How Painful)",
         mapsTo: "value2", 
-        scaleType: "linear" as const,
         domain: [1, 10]
       }
     },

@@ -9,8 +9,8 @@ COPY tsconfig*.json ./
 COPY vite.config.ts ./
 COPY index.html ./
 
-# Install frontend dependencies (skip postinstall)
-RUN npm ci --ignore-scripts
+    # Install frontend dependencies (skip postinstall)
+    RUN npm ci --ignore-scripts
 
 # Copy frontend source
 COPY src ./src
@@ -20,17 +20,27 @@ COPY public ./public
 RUN npm run build:client
 
 # Production stage
-FROM node:18-alpine
+FROM ubuntu:22.04
 
 WORKDIR /app
 
-# Install IBM Db2 CLI driver dependencies
-RUN apk add --no-cache \
-    libc6-compat \
-    gcc \
-    g++ \
-    make \
-    python3
+# Install Node.js and IBM Db2 CLI driver dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    build-essential \
+    python3 \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    libpam0g \
+    libaio1 \
+    libnsl2 \
+    libuuid1 \
+    libstdc++6 \
+    libgcc-s1 \
+    libxml2 \
+    libxml2-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy server package files
 COPY server/package*.json ./server/
@@ -52,6 +62,9 @@ EXPOSE 3001
 
 # Set working directory to server
 WORKDIR /app/server
+
+# Set production environment
+ENV NODE_ENV=production
 
 # Start server
 CMD ["node", "db2-server.js"]
