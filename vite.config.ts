@@ -6,10 +6,23 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'carbon': ['@carbon/react', '@carbon/icons-react'],
+          'charts': ['@carbon/charts', '@carbon/charts-react', 'd3'],
+          'router': ['react-router-dom']
+        }
+      }
+    }
   },
   server: {
     port: 3000,
     open: true,
   },
+  optimizeDeps: {
+    include: ['@carbon/react', '@carbon/charts-react']
+  }
 })

@@ -57,17 +57,19 @@ export const FeedbackPage: React.FC<FeedbackPageProps> = ({
         >
           Previous
         </Button>
-        {isSubmitting ? (
-          <InlineLoading description="Submitting survey..." />
-        ) : (
-          <Button
-            onClick={onSubmit}
-            kind="primary"
-            size="lg"
-          >
-            Submit survey
-          </Button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', minHeight: '48px' }}>
+          {isSubmitting ? (
+            <InlineLoading description="Submitting survey..." />
+          ) : (
+            <Button
+              onClick={onSubmit}
+              kind="primary"
+              size="lg"
+            >
+              Submit survey
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

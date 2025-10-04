@@ -255,11 +255,17 @@ export const ConfigEditor: React.FC = () => {
         />
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
         {/* Sections Panel */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <Heading style={{ fontSize: '1.125rem' }}>Sections</Heading>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '1rem',
+            minHeight: '40px'
+          }}>
+            <Heading style={{ fontSize: '1.125rem', margin: 0 }}>Sections</Heading>
             <Button
               size="sm"
               renderIcon={Add}
@@ -351,11 +357,17 @@ export const ConfigEditor: React.FC = () => {
           )}
         </div>
 
-        {/* Problems Panel */}
+        {/* Questions Panel */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <Heading style={{ fontSize: '1.125rem' }}>
-              {selectedSection ? `Problems - ${selectedSection.name}` : 'Problems'}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '1rem',
+            minHeight: '40px'
+          }}>
+            <Heading style={{ fontSize: '1.125rem', margin: 0 }}>
+              {selectedSection ? `Questions - ${selectedSection.name}` : 'Questions'}
             </Heading>
             {selectedSection && (
               <Button
@@ -367,7 +379,7 @@ export const ConfigEditor: React.FC = () => {
                   setShowProblemModal(true);
                 }}
               >
-                Add Problem
+                Add Question
               </Button>
             )}
           </div>
@@ -384,7 +396,7 @@ export const ConfigEditor: React.FC = () => {
                   <TableHead>
                     <TableRow>
                       <TableHeader>ID</TableHeader>
-                      <TableHeader>Problem Title</TableHeader>
+                      <TableHeader>Question Title</TableHeader>
                       <TableHeader>Actions</TableHeader>
                     </TableRow>
                   </TableHead>
@@ -424,12 +436,12 @@ export const ConfigEditor: React.FC = () => {
               </div>
             ) : (
               <Tile style={{ padding: '2rem', textAlign: 'center' }}>
-                <p style={{ opacity: 0.7 }}>No problems in this section. Add your first problem.</p>
+                <p style={{ opacity: 0.7 }}>No questions in this section. Add your first question.</p>
               </Tile>
             )
           ) : (
             <Tile style={{ padding: '2rem', textAlign: 'center' }}>
-              <p style={{ opacity: 0.7 }}>Select a section to view its problems.</p>
+              <p style={{ opacity: 0.7 }}>Select a section to view its questions.</p>
             </Tile>
           )}
         </div>
@@ -478,7 +490,7 @@ export const ConfigEditor: React.FC = () => {
           setEditingProblem(null);
           setProblemTitle('');
         }}
-        modalHeading={editingProblem ? 'Edit Problem' : 'Add New Problem'}
+        modalHeading={editingProblem ? 'Edit Question' : 'Add New Question'}
         primaryButtonText={editingProblem ? 'Update' : 'Add'}
         secondaryButtonText="Cancel"
         onRequestSubmit={editingProblem ? handleUpdateProblem : handleAddProblem}
@@ -487,8 +499,8 @@ export const ConfigEditor: React.FC = () => {
         <div>
           <TextArea
             id="problem-title"
-            labelText="Problem Title"
-            placeholder="Describe the problem..."
+            labelText="Question Title"
+            placeholder="Describe the question..."
             value={problemTitle}
             onChange={(e) => setProblemTitle(e.target.value)}
             rows={4}

@@ -22,16 +22,21 @@ if (!DB2_CONN_STRING) {
 app.use(cors());
 app.use(express.json());
 
-// Helper function to execute queries
+// Create connection pool
+const pool = new ibmdb.Pool();
+pool.setMaxPoolSize(10);
+
+// Helper function to execute queries using connection pool
 const executeQuery = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    ibmdb.open(DB2_CONN_STRING, (err, conn) => {
+    pool.open(DB2_CONN_STRING, (err, conn) => {
       if (err) {
         console.error('Connection error:', err);
         return reject(err);
       }
 
       conn.query(sql, params, (err, result) => {
+        // Return connection to pool instead of closing
         conn.close(() => {});
         
         if (err) {

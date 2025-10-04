@@ -242,7 +242,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               fontWeight: '600'
             }}
           >
-            Survey Config
+            Survey Questions
           </button>
         </div>
 
