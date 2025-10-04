@@ -26,6 +26,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
   const [responses, setResponses] = useState<Response[]>([]);
   const [notes, setNotes] = useState('');
   const [sessionValid, setSessionValid] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check if session is valid and active
   useEffect(() => {
@@ -112,6 +113,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
     };
 
     // Save to backend database
+    setIsSubmitting(true);
     try {
       await api.submitSurvey(submission, name, email, sessionId);
       
@@ -121,6 +123,8 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
     } catch (error) {
       console.error('Failed to save submission:', error);
       alert('Failed to save your response. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   }, [responses, notes, name, email, sessionId]);
 
@@ -171,6 +175,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
           <FeedbackPage
             notes={notes}
             totalSections={totalSections}
+            isSubmitting={isSubmitting}
             onNotesChange={setNotes}
             onPrevious={() => {
               setCurrentStep('section');
@@ -182,23 +187,6 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
 
         {currentStep === 'thankyou' && <ThankYouPage />}
 
-        {/* Footer */}
-        {currentStep !== 'welcome' && currentStep !== 'thankyou' && (
-          <footer style={{ 
-            marginTop: '6rem', 
-            paddingTop: '2rem', 
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-            textAlign: 'center'
-          }}>
-            <p style={{ 
-              fontSize: '0.75rem',
-              margin: 0,
-              opacity: 0.6
-            }}>
-              Zora Survey Tool • Data stored locally in your browser • No server required
-            </p>
-          </footer>
-        )}
       </div>
     </div>
   );

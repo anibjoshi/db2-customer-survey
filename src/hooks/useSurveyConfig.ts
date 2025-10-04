@@ -38,30 +38,42 @@ export const useSurveyConfig = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for custom config first
-    const customConfig = configManager.loadConfig();
-    
-    if (customConfig) {
-      setConfig(customConfig);
-      setLoading(false);
-    } else {
-      // Load from JSON file
-      fetch('/survey-config.json')
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to load survey configuration');
-          }
-          return response.json();
-        })
-        .then((data: SurveyConfig) => {
+    const loadConfig = async () => {
+      try {
+        // Try loading from API first (database)
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${API_BASE_URL}/config`);
+        
+        if (response.ok) {
+          const data = await response.json();
           setConfig(data);
           setLoading(false);
-        })
-        .catch(err => {
-          setError(err.message);
+          return;
+        }
+        
+        // Fallback to localStorage override
+        const customConfig = configManager.loadConfig();
+        if (customConfig) {
+          setConfig(customConfig);
           setLoading(false);
-        });
-    }
+          return;
+        }
+        
+        // Final fallback to JSON file
+        const fileResponse = await fetch('/survey-config.json');
+        if (!fileResponse.ok) {
+          throw new Error('Failed to load survey configuration');
+        }
+        const data = await fileResponse.json();
+        setConfig(data);
+        setLoading(false);
+      } catch (err: any) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+    
+    loadConfig();
   }, []);
 
   // Transform config to match existing Problem type

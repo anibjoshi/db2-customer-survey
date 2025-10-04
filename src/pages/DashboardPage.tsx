@@ -16,7 +16,7 @@ import { Add, Launch, TrashCan, Checkmark, StopFilled, View } from '@carbon/icon
 import { SurveySession, SurveySubmission, Problem, AggregatePoint } from '../types';
 import { sessionManager } from '../storage/sessionManager';
 import { api } from '../api/client';
-import { ResponsesTable, ScatterPlot, Legend, SurveyConfigEditor } from '../components';
+import { ResponsesTable, ScatterPlot, Legend, ConfigEditor } from '../components';
 import { calculateAverage } from '../utils';
 import { DEFAULT_RATING } from '../constants';
 import { SurveyConfig } from '../hooks/useSurveyConfig';
@@ -498,12 +498,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
 
         {/* Survey Config Tab Content */}
-        {activeTab === 'config' && (
-          <SurveyConfigEditor
-            currentConfig={currentConfig}
-            onConfigSaved={onConfigUpdate}
-          />
-        )}
+        {activeTab === 'config' && <ConfigEditor />}
       </div>
     </div>
   );

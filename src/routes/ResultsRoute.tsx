@@ -109,20 +109,6 @@ export const ResultsRoute: React.FC<ResultsRouteProps> = ({ problems }) => {
           onExportDatabase={exportDatabaseToFile}
         />
 
-        <footer style={{ 
-          marginTop: '6rem', 
-          paddingTop: '2rem', 
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          textAlign: 'center'
-        }}>
-          <p style={{ 
-            fontSize: '0.75rem',
-            margin: 0,
-            opacity: 0.6
-          }}>
-            Zora Survey Tool • Data stored locally in your browser • No server required
-          </p>
-        </footer>
       </div>
     </div>
   );

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Button, TextArea, Heading } from '@carbon/react';
+import { Button, TextArea, Heading, InlineLoading } from '@carbon/react';
 
 interface FeedbackPageProps {
   notes: string;
   totalSections: number;
+  isSubmitting?: boolean;
   onNotesChange: (value: string) => void;
   onPrevious: () => void;
   onSubmit: () => void;
@@ -12,6 +13,7 @@ interface FeedbackPageProps {
 export const FeedbackPage: React.FC<FeedbackPageProps> = ({
   notes,
   totalSections,
+  isSubmitting = false,
   onNotesChange,
   onPrevious,
   onSubmit
@@ -51,16 +53,21 @@ export const FeedbackPage: React.FC<FeedbackPageProps> = ({
           onClick={onPrevious}
           kind="secondary"
           size="lg"
+          disabled={isSubmitting}
         >
           Previous
         </Button>
-        <Button
-          onClick={onSubmit}
-          kind="primary"
-          size="lg"
-        >
-          Submit survey
-        </Button>
+        {isSubmitting ? (
+          <InlineLoading description="Submitting survey..." />
+        ) : (
+          <Button
+            onClick={onSubmit}
+            kind="primary"
+            size="lg"
+          >
+            Submit survey
+          </Button>
+        )}
       </div>
     </div>
   );

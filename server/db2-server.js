@@ -297,6 +297,198 @@ app.get('/api/sessions/:id/submissions', async (req, res) => {
   }
 });
 
+// ============================================================================
+// CONFIGURATION ENDPOINTS
+// ============================================================================
+
+// Get active survey configuration
+app.get('/api/config', async (req, res) => {
+  try {
+    const configs = await executeQuery('SELECT * FROM SURVEYS.CONFIG WHERE IS_ACTIVE = 1 ORDER BY CREATED_AT DESC FETCH FIRST 1 ROWS ONLY');
+    
+    if (configs.length === 0) {
+      return res.status(404).json({ error: 'No active configuration found' });
+    }
+    
+    const config = configs[0];
+    
+    // Get sections
+    const sections = await executeQuery(
+      'SELECT * FROM SURVEYS.SECTIONS WHERE CONFIG_ID = ? ORDER BY DISPLAY_ORDER',
+      [config.ID]
+    );
+    
+    // Get problems for each section
+    const result = {
+      title: config.TITLE,
+      description: config.DESCRIPTION,
+      sections: []
+    };
+    
+    for (const section of sections) {
+      const problems = await executeQuery(
+        'SELECT * FROM SURVEYS.PROBLEMS WHERE SECTION_ID = ? ORDER BY DISPLAY_ORDER',
+        [section.ID]
+      );
+      
+      result.sections.push({
+        id: section.ID,
+        name: section.NAME,
+        color: section.COLOR,
+        problems: problems.map(p => ({
+          id: p.ID,
+          title: p.TITLE
+        }))
+      });
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all sections
+app.get('/api/config/sections', async (req, res) => {
+  try {
+    const configs = await executeQuery('SELECT * FROM SURVEYS.CONFIG WHERE IS_ACTIVE = 1 ORDER BY CREATED_AT DESC FETCH FIRST 1 ROWS ONLY');
+    
+    if (configs.length === 0) {
+      return res.json([]);
+    }
+    
+    const sections = await executeQuery(
+      'SELECT * FROM SURVEYS.SECTIONS WHERE CONFIG_ID = ? ORDER BY DISPLAY_ORDER',
+      [configs[0].ID]
+    );
+    
+    res.json(sections.map(s => ({
+      id: s.ID,
+      name: s.NAME,
+      color: s.COLOR,
+      displayOrder: s.DISPLAY_ORDER
+    })));
+  } catch (error) {
+    console.error('Error fetching sections:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add new section
+app.post('/api/config/sections', async (req, res) => {
+  try {
+    const { id, name, color, displayOrder, configId } = req.body;
+    
+    await executeQuery(`
+      INSERT INTO SURVEYS.SECTIONS (ID, CONFIG_ID, NAME, COLOR, DISPLAY_ORDER)
+      VALUES (?, ?, ?, ?, ?)
+    `, [id, configId, name, color || null, displayOrder]);
+    
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error adding section:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update section
+app.patch('/api/config/sections/:id', async (req, res) => {
+  try {
+    const { name, color } = req.body;
+    
+    await executeQuery(
+      'UPDATE SURVEYS.SECTIONS SET NAME = ?, COLOR = ? WHERE ID = ?',
+      [name, color || null, req.params.id]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating section:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete section
+app.delete('/api/config/sections/:id', async (req, res) => {
+  try {
+    // Delete associated problems first
+    await executeQuery('DELETE FROM SURVEYS.PROBLEMS WHERE SECTION_ID = ?', [req.params.id]);
+    
+    // Delete section
+    await executeQuery('DELETE FROM SURVEYS.SECTIONS WHERE ID = ?', [req.params.id]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting section:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get problems for a section
+app.get('/api/config/sections/:id/problems', async (req, res) => {
+  try {
+    const problems = await executeQuery(
+      'SELECT * FROM SURVEYS.PROBLEMS WHERE SECTION_ID = ? ORDER BY DISPLAY_ORDER',
+      [req.params.id]
+    );
+    
+    res.json(problems.map(p => ({
+      id: p.ID,
+      title: p.TITLE,
+      displayOrder: p.DISPLAY_ORDER
+    })));
+  } catch (error) {
+    console.error('Error fetching problems:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add new problem
+app.post('/api/config/problems', async (req, res) => {
+  try {
+    const { id, sectionId, title, displayOrder } = req.body;
+    
+    await executeQuery(`
+      INSERT INTO SURVEYS.PROBLEMS (ID, SECTION_ID, TITLE, DISPLAY_ORDER)
+      VALUES (?, ?, ?, ?)
+    `, [id, sectionId, title, displayOrder]);
+    
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error adding problem:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update problem
+app.patch('/api/config/problems/:id', async (req, res) => {
+  try {
+    const { title } = req.body;
+    
+    await executeQuery(
+      'UPDATE SURVEYS.PROBLEMS SET TITLE = ? WHERE ID = ?',
+      [title, req.params.id]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating problem:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete problem
+app.delete('/api/config/problems/:id', async (req, res) => {
+  try {
+    await executeQuery('DELETE FROM SURVEYS.PROBLEMS WHERE ID = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting problem:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ 

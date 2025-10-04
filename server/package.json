@@ -6,7 +6,8 @@
     "dev": "nodemon db2-server.js",
     "dev:sqlite": "nodemon server.js",
     "start": "node db2-server.js",
-    "start:sqlite": "node server.js"
+    "start:sqlite": "node server.js",
+    "seed": "node seed-config.js"
   },
   "dependencies": {
     "express": "^4.18.2",
