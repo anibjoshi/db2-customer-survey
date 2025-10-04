@@ -45,14 +45,20 @@ export const ConfigEditor: React.FC = () => {
   const [problemTitle, setProblemTitle] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeConfigId, setActiveConfigId] = useState<string>('');
 
   const loadSections = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/config/sections`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
+      console.log('Loaded sections:', data);
       setSections(data);
     } catch (err: any) {
-      setError('Failed to load sections');
+      console.error('Error loading sections:', err);
+      setError('Failed to load sections: ' + err.message);
     }
   };
 
@@ -67,6 +73,19 @@ export const ConfigEditor: React.FC = () => {
   };
 
   useEffect(() => {
+    const loadActiveConfig = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/config/id`);
+        if (response.ok) {
+          const data = await response.json();
+          setActiveConfigId(data.configId);
+        }
+      } catch (err) {
+        console.error('Failed to load config ID');
+      }
+    };
+    
+    loadActiveConfig();
     loadSections();
   }, []);
 
@@ -77,6 +96,11 @@ export const ConfigEditor: React.FC = () => {
   }, [selectedSection]);
 
   const handleAddSection = async () => {
+    if (!activeConfigId) {
+      setError('Config not loaded. Please refresh the page.');
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/config/sections`, {
         method: 'POST',
@@ -86,20 +110,26 @@ export const ConfigEditor: React.FC = () => {
           name: sectionName,
           color: sectionColor || null,
           displayOrder: sections.length,
-          configId: 'config-default' // You'll need to get the active config ID
+          configId: activeConfigId
         })
       });
       
       if (response.ok) {
         setSuccess('Section added successfully');
-        loadSections();
         setShowSectionModal(false);
         setSectionName('');
         setSectionColor('');
+        
+        // Force reload sections
+        await loadSections();
+        
         setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const errorData = await response.json();
+        setError('Failed to add section: ' + (errorData.error || 'Unknown error'));
       }
     } catch (err: any) {
-      setError('Failed to add section');
+      setError('Failed to add section: ' + err.message);
     }
   };
 
@@ -155,12 +185,23 @@ export const ConfigEditor: React.FC = () => {
   const handleAddProblem = async () => {
     if (!selectedSection) return;
     
+    // Find the next available problem ID across ALL sections, not just current section
+    let maxId = 0;
+    for (const section of sections) {
+      const sectionProblems = await fetch(`${API_BASE_URL}/config/sections/${section.id}/problems`).then(r => r.json());
+      if (sectionProblems.length > 0) {
+        const sectionMaxId = Math.max(...sectionProblems.map((p: Problem) => p.id));
+        maxId = Math.max(maxId, sectionMaxId);
+      }
+    }
+    const newId = maxId + 1;
+    
     try {
       const response = await fetch(`${API_BASE_URL}/config/problems`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: Date.now(),
+          id: newId,
           sectionId: selectedSection.id,
           title: problemTitle,
           displayOrder: problems.length
@@ -168,11 +209,13 @@ export const ConfigEditor: React.FC = () => {
       });
       
       if (response.ok) {
-        setSuccess('Problem added successfully');
-        loadProblems(selectedSection.id);
+        setSuccess('Question added successfully! Page will reload in 2 seconds...');
         setShowProblemModal(false);
         setProblemTitle('');
-        setTimeout(() => setSuccess(''), 3000);
+        // Reload page to refresh config
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       }
     } catch (err: any) {
       setError('Failed to add problem');
@@ -192,12 +235,14 @@ export const ConfigEditor: React.FC = () => {
       });
       
       if (response.ok) {
-        setSuccess('Problem updated successfully');
-        loadProblems(selectedSection.id);
+        setSuccess('Question updated successfully! Page will reload in 2 seconds...');
         setShowProblemModal(false);
         setEditingProblem(null);
         setProblemTitle('');
-        setTimeout(() => setSuccess(''), 3000);
+        // Reload page to refresh config everywhere
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       }
     } catch (err: any) {
       setError('Failed to update problem');

@@ -71,10 +71,10 @@ const executeQuery = (sql, params = []) => {
 // SESSION ENDPOINTS
 // ============================================================================
 
-// Get all sessions
+// Get all sessions (exclude deleted)
 app.get('/api/sessions', async (req, res) => {
   try {
-    const sessions = await executeQuery('SELECT * FROM SURVEYS.SESSIONS ORDER BY CREATED_AT DESC');
+    const sessions = await executeQuery('SELECT * FROM SURVEYS.SESSIONS WHERE IS_DELETED = 0 ORDER BY CREATED_AT DESC');
     res.json(sessions.map(s => ({
       id: s.ID,
       name: s.NAME,
@@ -98,8 +98,8 @@ app.post('/api/sessions', async (req, res) => {
     const timestamp = new Date(createdAt).toISOString().replace('T', ' ').substring(0, 19);
     
     await executeQuery(`
-      INSERT INTO SURVEYS.SESSIONS (ID, NAME, DESCRIPTION, CREATED_AT, IS_ACTIVE, RESPONSE_COUNT)
-      VALUES (?, ?, ?, CAST(? AS TIMESTAMP), 1, 0)
+      INSERT INTO SURVEYS.SESSIONS (ID, NAME, DESCRIPTION, CREATED_AT, IS_ACTIVE, IS_DELETED, RESPONSE_COUNT)
+      VALUES (?, ?, ?, CAST(? AS TIMESTAMP), 1, 0, 0)
     `, [id, name, description || null, timestamp]);
     
     const sessions = await executeQuery('SELECT * FROM SURVEYS.SESSIONS WHERE ID = ?', [id]);
@@ -170,24 +170,16 @@ app.patch('/api/sessions/:id', async (req, res) => {
   }
 });
 
-// Delete session
+// Delete session (soft delete - marks as deleted, preserves data)
 app.delete('/api/sessions/:id', async (req, res) => {
   try {
-    // Delete associated responses first
-    await executeQuery(`
-      DELETE FROM SURVEYS.RESPONSES 
-      WHERE SUBMISSION_ID IN (
-        SELECT ID FROM SURVEYS.SUBMISSIONS WHERE SESSION_ID = ?
-      )
-    `, [req.params.id]);
+    // Soft delete: mark session as deleted instead of removing data
+    await executeQuery(
+      'UPDATE SURVEYS.SESSIONS SET IS_DELETED = 1, IS_ACTIVE = 0 WHERE ID = ?',
+      [req.params.id]
+    );
     
-    // Delete submissions
-    await executeQuery('DELETE FROM SURVEYS.SUBMISSIONS WHERE SESSION_ID = ?', [req.params.id]);
-    
-    // Delete session
-    await executeQuery('DELETE FROM SURVEYS.SESSIONS WHERE ID = ?', [req.params.id]);
-    
-    res.json({ success: true });
+    res.json({ success: true, message: 'Session marked as deleted. Data preserved.' });
   } catch (error) {
     console.error('Error deleting session:', error);
     res.status(500).json({ error: error.message });
@@ -202,6 +194,9 @@ app.delete('/api/sessions/:id', async (req, res) => {
 app.post('/api/submissions', async (req, res) => {
   try {
     const { submission, name, email, sessionId } = req.body;
+    
+    console.log(`Receiving submission with ${submission.responses.length} responses`);
+    console.log('Problem IDs:', submission.responses.map(r => r.problemId).sort((a, b) => a - b));
     
     // Convert ISO string to Db2 timestamp format
     const timestamp = new Date(submission.timestamp).toISOString().replace('T', ' ').substring(0, 19);
@@ -371,6 +366,22 @@ app.get('/api/config', async (req, res) => {
   }
 });
 
+// Get active config ID
+app.get('/api/config/id', async (req, res) => {
+  try {
+    const configs = await executeQuery('SELECT ID FROM SURVEYS.CONFIG WHERE IS_ACTIVE = 1 ORDER BY CREATED_AT DESC FETCH FIRST 1 ROWS ONLY');
+    
+    if (configs.length === 0) {
+      return res.status(404).json({ error: 'No active config found' });
+    }
+    
+    res.json({ configId: configs[0].ID });
+  } catch (error) {
+    console.error('Error fetching config ID:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all sections
 app.get('/api/config/sections', async (req, res) => {
   try {
@@ -470,6 +481,12 @@ app.get('/api/config/sections/:id/problems', async (req, res) => {
 app.post('/api/config/problems', async (req, res) => {
   try {
     const { id, sectionId, title, displayOrder } = req.body;
+    
+    // Check if ID already exists
+    const existing = await executeQuery('SELECT ID FROM SURVEYS.PROBLEMS WHERE ID = ?', [id]);
+    if (existing.length > 0) {
+      return res.status(400).json({ error: `Problem ID ${id} already exists. Please try again.` });
+    }
     
     await executeQuery(`
       INSERT INTO SURVEYS.PROBLEMS (ID, SECTION_ID, TITLE, DISPLAY_ORDER)

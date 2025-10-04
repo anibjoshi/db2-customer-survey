@@ -46,7 +46,8 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
   }, [sessionId]);
 
   useEffect(() => {
-    if (problems.length > 0 && responses.length === 0) {
+    if (problems.length > 0) {
+      console.log('Initializing responses for', problems.length, 'problems');
       setResponses(
         problems.map(problem => ({
           problemId: problem.id,
@@ -55,7 +56,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
         }))
       );
     }
-  }, [problems, responses.length]);
+  }, [problems]);
 
   // Group problems by category
   const groupedProblems = problems.reduce((acc, problem) => {

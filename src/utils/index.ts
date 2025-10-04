@@ -3,6 +3,6 @@ export const calculateAverage = (numbers: number[]): number => {
   return numbers.reduce((sum, num) => sum + num, 0) / numbers.length;
 };
 
-export const generateId = (): string => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+export const generateId = (): string => `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
 export { exportToCSV, exportSingleSubmissionToCSV } from './csvExport';

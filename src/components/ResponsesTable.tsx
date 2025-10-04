@@ -169,10 +169,10 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
                               </TableRow>
                             </TableHead>
                             <TableBody>
-                              {submission.responses.map(response => {
+                              {submission.responses.map((response, idx) => {
                                 const problem = problems.find(p => p.id === response.problemId);
                                 return (
-                                  <TableRow key={response.problemId}>
+                                  <TableRow key={`${submission.id}-${response.problemId}-${idx}`}>
                                     <TableCell>{response.problemId}</TableCell>
                                     <TableCell>{problem?.title || 'Unknown'}</TableCell>
                                     <TableCell>{response.frequency}</TableCell>

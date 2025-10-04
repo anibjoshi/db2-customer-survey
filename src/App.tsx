@@ -31,6 +31,7 @@ function AppShell() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [configVersion, setConfigVersion] = useState(0);
 
   // Check auth status
   useEffect(() => {
@@ -162,6 +163,9 @@ function AppShell() {
                   window.open(`/survey/${sessionId}`, '_blank');
                 }}
                 onConfigUpdate={() => {
+                  window.location.reload();
+                }}
+                onReloadConfig={() => {
                   window.location.reload();
                 }}
               />

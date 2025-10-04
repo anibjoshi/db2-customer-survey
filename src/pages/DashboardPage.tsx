@@ -26,13 +26,13 @@ interface DashboardPageProps {
   currentConfig: SurveyConfig | null;
   onLaunchSurvey: (sessionId: string) => void;
   onConfigUpdate: () => void;
+  onReloadConfig?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ 
   problems,
-  currentConfig,
   onLaunchSurvey,
-  onConfigUpdate
+  onReloadConfig
 }) => {
   const [sessions, setSessions] = useState<SurveySession[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -56,7 +56,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   useEffect(() => {
     loadSessions();
     loadAllSubmissions();
-  }, []);
+    
+    // Poll for updates every 30 seconds to catch new responses
+    const interval = setInterval(() => {
+      if (activeTab === 'sessions') {
+        loadSessions();
+      } else if (activeTab === 'all') {
+        loadAllSubmissions();
+      }
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   const handleCreateSession = async () => {
     if (!newSessionName.trim()) return;
@@ -79,18 +90,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const handleEndSession = async (sessionId: string) => {
     if (window.confirm('Are you sure you want to end this session? The survey link will no longer work.')) {
-      await sessionManager.endSession(sessionId);
-      await loadSessions();
+      try {
+        await sessionManager.endSession(sessionId);
+        await loadSessions();
+      } catch (err) {
+        console.error('Error ending session:', err);
+      }
     }
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (window.confirm('Are you sure you want to delete this session and all its responses? This cannot be undone.')) {
-      await sessionManager.deleteSession(sessionId);
-      await loadSessions();
-      // Reload all submissions if we're on that tab
-      if (activeTab === 'all') {
-        await loadAllSubmissions();
+    if (window.confirm('Are you sure you want to delete this session? The session data will be preserved but hidden.')) {
+      try {
+        await sessionManager.deleteSession(sessionId);
+        await loadSessions();
+        // Reload all submissions if we're on that tab
+        if (activeTab === 'all') {
+          await loadAllSubmissions();
+        }
+      } catch (err) {
+        console.error('Error deleting session:', err);
       }
     }
   };
@@ -180,7 +199,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           marginBottom: '2rem'
         }}>
           <button
-            onClick={() => setActiveTab('sessions')}
+            onClick={() => {
+              setActiveTab('sessions');
+              loadSessions(); // Refresh on tab switch
+            }}
             style={{
               padding: '1rem 1.5rem',
               backgroundColor: activeTab === 'sessions' ? '#0f62fe' : 'transparent',
@@ -215,6 +237,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             onClick={() => {
               setActiveTab('all');
               loadAllSubmissions();
+              // Trigger config reload to get latest questions
+              if (onReloadConfig) onReloadConfig();
             }}
             style={{
               padding: '1rem 1.5rem',
