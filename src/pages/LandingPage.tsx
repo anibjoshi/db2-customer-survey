@@ -16,7 +16,7 @@ export const LandingPage: React.FC = () => {
         textAlign: 'center'
       }}>
         <img 
-          src="/image.png" 
+          src="/public/image.png" 
           alt="IBM Db2 Survey" 
           style={{ 
             maxWidth: '500px',
