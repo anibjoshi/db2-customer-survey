@@ -23,7 +23,10 @@ export interface SurveySubmission {
   timestamp: string;
   respondentName?: string;
   respondentEmail?: string;
+  sessionId?: string;
 }
+
+export * from './session';
 
 export interface AggregatePoint {
   id: number;

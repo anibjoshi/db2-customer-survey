@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { Heading } from '@carbon/react';
 import { Response, SurveySubmission } from '../types';
 import { DEFAULT_RATING } from '../constants';
 import { generateId } from '../utils';
 import { saveSubmission, initDatabase } from '../storage/database';
+import { sessionManager } from '../storage/sessionManager';
 import { WelcomePage, SectionPage, FeedbackPage, ThankYouPage } from '../pages';
 import { Problem } from '../types';
 
@@ -16,13 +18,27 @@ interface SurveyRouteProps {
 type SurveyStep = 'welcome' | 'section' | 'feedback' | 'thankyou';
 
 export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors, config }) => {
-  const navigate = useNavigate();
+  const { sessionId } = useParams<{ sessionId: string }>();
   const [currentStep, setCurrentStep] = useState<SurveyStep>('welcome');
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [responses, setResponses] = useState<Response[]>([]);
   const [notes, setNotes] = useState('');
+  const [sessionValid, setSessionValid] = useState(true);
+
+  // Check if session is valid and active
+  useEffect(() => {
+    if (!sessionId) {
+      setSessionValid(false);
+      return;
+    }
+
+    const session = sessionManager.getSessionById(sessionId);
+    if (!session || !session.isActive) {
+      setSessionValid(false);
+    }
+  }, [sessionId]);
 
   // Initialize database and responses
   useEffect(() => {
@@ -98,15 +114,38 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
 
     // Save to SQLite database
     try {
-      saveSubmission(submission, name, email);
-      // Show thank you page
+      saveSubmission(submission, name, email, sessionId);
+      
+      // Show thank you page and update session count
       setCurrentStep('thankyou');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Update session response count asynchronously
+      if (sessionId) {
+        import('../storage/database').then(({ getSubmissionsBySession }) => {
+          const sessionSubmissions = getSubmissionsBySession(sessionId);
+          sessionManager.updateResponseCount(sessionId, sessionSubmissions.length);
+        });
+      }
     } catch (error) {
       console.error('Failed to save submission:', error);
       alert('Failed to save your response. Please try again.');
     }
-  }, [responses, notes, name, email]);
+  }, [responses, notes, name, email, sessionId]);
+
+  // Show error if session is invalid
+  if (!sessionValid) {
+    return (
+      <div style={{ padding: '2rem 0', minHeight: 'calc(100vh - 48px)', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ padding: '4rem 2rem' }}>
+          <Heading style={{ marginBottom: '1rem' }}>Survey Not Available</Heading>
+          <p style={{ opacity: 0.9 }}>
+            This survey session has ended or is no longer available.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '2rem 0', minHeight: 'calc(100vh - 48px)', maxWidth: '1280px', margin: '0 auto' }}>

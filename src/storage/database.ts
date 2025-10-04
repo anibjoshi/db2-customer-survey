@@ -18,9 +18,24 @@ export const initDatabase = async (): Promise<void> => {
   if (savedDb) {
     const uint8Array = new Uint8Array(JSON.parse(savedDb));
     db = new SQL.Database(uint8Array);
+    migrateDatabase();
   } else {
     db = new SQL.Database();
     createTables();
+  }
+};
+
+const migrateDatabase = (): void => {
+  if (!db) return;
+
+  // Check if session_id column exists
+  try {
+    db.exec('SELECT session_id FROM submissions LIMIT 1');
+  } catch (error) {
+    // Column doesn't exist, add it
+    console.log('Migrating database: adding session_id column');
+    db.run('ALTER TABLE submissions ADD COLUMN session_id TEXT');
+    saveDatabase();
   }
 };
 
@@ -33,7 +48,8 @@ const createTables = (): void => {
       timestamp TEXT NOT NULL,
       respondent_name TEXT,
       respondent_email TEXT,
-      notes TEXT
+      notes TEXT,
+      session_id TEXT
     );
   `);
 
@@ -62,13 +78,14 @@ const saveDatabase = (): void => {
 export const saveSubmission = (
   submission: SurveySubmission, 
   name: string, 
-  email: string
+  email: string,
+  sessionId?: string
 ): void => {
   if (!db) throw new Error('Database not initialized');
 
   db.run(
-    'INSERT INTO submissions (id, timestamp, respondent_name, respondent_email, notes) VALUES (?, ?, ?, ?, ?)',
-    [submission.id, submission.timestamp, name, email, submission.notes || null]
+    'INSERT INTO submissions (id, timestamp, respondent_name, respondent_email, notes, session_id) VALUES (?, ?, ?, ?, ?, ?)',
+    [submission.id, submission.timestamp, name, email, submission.notes || null, sessionId || null]
   );
 
   submission.responses.forEach(response => {
@@ -90,7 +107,7 @@ export const getAllSubmissions = (): SurveySubmission[] => {
   if (submissionResults.length === 0) return [];
 
   submissionResults[0].values.forEach((row: any) => {
-    const [id, timestamp, name, email, notes] = row;
+    const [id, timestamp, name, email, notes, sessionId] = row;
     
     const responseResults = db!.exec(
       'SELECT problem_id, frequency, severity FROM responses WHERE submission_id = ?',
@@ -111,7 +128,8 @@ export const getAllSubmissions = (): SurveySubmission[] => {
       responses,
       notes: notes as string | undefined,
       respondentName: name as string | undefined,
-      respondentEmail: email as string | undefined
+      respondentEmail: email as string | undefined,
+      sessionId: sessionId as string | undefined
     });
   });
 
@@ -147,5 +165,43 @@ export const getSubmissionCount = (): number => {
 
   const result = db.exec('SELECT COUNT(*) FROM submissions');
   return result.length > 0 ? (result[0].values[0][0] as number) : 0;
+};
+
+export const getSubmissionsBySession = (sessionId: string): SurveySubmission[] => {
+  if (!db) return [];
+
+  const submissions: SurveySubmission[] = [];
+  
+  const submissionResults = db!.exec('SELECT * FROM submissions WHERE session_id = ?', [sessionId]);
+  if (submissionResults.length === 0) return [];
+
+  submissionResults[0].values.forEach((row: any) => {
+    const [id, timestamp, name, email, notes, sessionIdCol] = row;
+    
+    const responseResults = db!.exec(
+      'SELECT problem_id, frequency, severity FROM responses WHERE submission_id = ?',
+      [id]
+    );
+
+    const responses: Response[] = responseResults.length > 0
+      ? responseResults[0].values.map((r: any) => ({
+          problemId: r[0],
+          frequency: r[1],
+          severity: r[2]
+        }))
+      : [];
+
+    submissions.push({
+      id: id as string,
+      timestamp: timestamp as string,
+      responses,
+      notes: notes as string | undefined,
+      respondentName: name as string | undefined,
+      respondentEmail: email as string | undefined,
+      sessionId: sessionIdCol as string | undefined
+    });
+  });
+
+  return submissions;
 };
 

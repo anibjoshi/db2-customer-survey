@@ -19,13 +19,36 @@ import {
 } from '@carbon/icons-react';
 import { useSurveyConfig } from './hooks/useSurveyConfig';
 import { SurveyRoute } from './routes/SurveyRoute';
-import { ResultsRoute } from './routes/ResultsRoute';
+import { DashboardPage, LoginPage } from './pages';
 import './App.css';
+import { useState, useEffect } from 'react';
+
+const ADMIN_PASSWORD = 'admin2024';
 
 function AppShell() {
   const { config, problems, groupColors, loading, error } = useSurveyConfig();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
+  // Check auth status
+  useEffect(() => {
+    const auth = sessionStorage.getItem('zora_admin_auth');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = (password: string) => {
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('zora_admin_auth', 'true');
+      setLoginError('');
+    } else {
+      setLoginError('Incorrect password. Please try again.');
+    }
+  };
 
   if (loading) {
     return (
@@ -62,8 +85,28 @@ function AppShell() {
     );
   }
 
-  const isSurveyRoute = location.pathname === '/survey' || location.pathname === '/';
-  const isResultsRoute = location.pathname === '/results';
+  const isDashboardRoute = location.pathname === '/dashboard' || location.pathname === '/';
+  const isSurveyRoute = location.pathname.startsWith('/survey');
+
+  // Show login for dashboard access
+  if (isDashboardRoute && !isAuthenticated) {
+    return (
+      <Theme theme="g90">
+        <Header aria-label="Zora Survey">
+          <HeaderName href="/" prefix="IBM">
+            Zora Survey
+          </HeaderName>
+        </Header>
+        <Content id="main-content">
+          <div style={{ padding: '2rem 0', minHeight: 'calc(100vh - 48px)', maxWidth: '1280px', margin: '0 auto' }}>
+            <div style={{ padding: '0 2rem' }}>
+              <LoginPage onLogin={handleLogin} error={loginError} />
+            </div>
+          </div>
+        </Content>
+      </Theme>
+    );
+  }
 
   return (
     <Theme theme="g90">
@@ -90,20 +133,15 @@ function AppShell() {
         isChildOfHeader={false}
       >
         <SideNavItems>
-          <SideNavLink 
-            renderIcon={Dashboard}
-            onClick={() => navigate('/survey')}
-            isActive={isSurveyRoute}
-          >
-            Take Survey
-          </SideNavLink>
-          <SideNavLink 
-            renderIcon={ChartScatter}
-            onClick={() => navigate('/results')}
-            isActive={isResultsRoute}
-          >
-            View Results
-          </SideNavLink>
+          {isAuthenticated && (
+            <SideNavLink 
+              renderIcon={Dashboard}
+              onClick={() => navigate('/dashboard')}
+              isActive={isDashboardRoute}
+            >
+              Dashboard
+            </SideNavLink>
+          )}
         </SideNavItems>
       </SideNav>
 
@@ -112,15 +150,27 @@ function AppShell() {
           <Route 
             path="/" 
             element={
-              <SurveyRoute 
-                problems={problems} 
-                groupColors={groupColors} 
-                config={config} 
+              <DashboardPage
+                problems={problems}
+                onLaunchSurvey={(sessionId) => {
+                  window.open(`/survey/${sessionId}`, '_blank');
+                }}
               />
             } 
           />
           <Route 
-            path="/survey" 
+            path="/dashboard" 
+            element={
+              <DashboardPage
+                problems={problems}
+                onLaunchSurvey={(sessionId) => {
+                  window.open(`/survey/${sessionId}`, '_blank');
+                }}
+              />
+            } 
+          />
+          <Route 
+            path="/survey/:sessionId" 
             element={
               <SurveyRoute 
                 problems={problems} 
@@ -128,10 +178,6 @@ function AppShell() {
                 config={config} 
               />
             } 
-          />
-          <Route 
-            path="/results" 
-            element={<ResultsRoute problems={problems} />} 
           />
         </Routes>
       </Content>

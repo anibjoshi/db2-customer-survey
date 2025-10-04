@@ -142,7 +142,7 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
                   <TableExpandRow
                     isExpanded={isExpanded}
                     onExpand={() => toggleRow(submission.id)}
-                    ariaLabel="Expand row"
+                    aria-label="Expand row"
                   >
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{submission.respondentName || 'Anonymous'}</TableCell>
