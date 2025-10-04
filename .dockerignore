@@ -1,0 +1,14 @@
+node_modules
+server/node_modules
+dist
+.git
+.env
+.env.local
+*.log
+npm-debug.log*
+.DS_Store
+.vscode
+.idea
+server/survey.db
+server/survey.db-journal
+
