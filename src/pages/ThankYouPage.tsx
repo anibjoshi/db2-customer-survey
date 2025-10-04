@@ -28,15 +28,23 @@ export const ThankYouPage: React.FC = () => {
       </div>
 
       <Heading style={{ marginBottom: '1rem', fontSize: '2rem' }}>
-        Thank You for Taking the Survey!
+        Thank you for taking the survey!
       </Heading>
       
       <p style={{ 
         fontSize: '1.125rem', 
         lineHeight: '1.6',
-        opacity: 0.9
+        opacity: 0.9,
+        marginBottom: '1rem'
       }}>
         Your feedback has been successfully saved and will help us prioritize improvements.
+      </p>
+      
+      <p style={{ 
+        fontSize: '0.875rem',
+        opacity: 0.6
+      }}>
+        You can close this window.
       </p>
     </div>
   );

@@ -19,7 +19,7 @@ import {
 } from '@carbon/icons-react';
 import { useSurveyConfig } from './hooks/useSurveyConfig';
 import { SurveyRoute } from './routes/SurveyRoute';
-import { DashboardPage, LoginPage } from './pages';
+import { DashboardPage, LoginPage, LandingPage } from './pages';
 import './App.css';
 import { useState, useEffect } from 'react';
 
@@ -53,16 +53,16 @@ function AppShell() {
   if (loading) {
     return (
       <Theme theme="g90">
-        <Header aria-label="Zora Survey">
-          <HeaderName href="/" prefix="IBM">
-            Zora Survey
-          </HeaderName>
-        </Header>
-        <Content id="main-content">
-          <div style={{ padding: '4rem', textAlign: 'center' }}>
-            <Heading>Loading survey...</Heading>
-          </div>
-        </Content>
+      <Header aria-label="IBM Db2 Survey">
+        <HeaderName href="/" prefix="IBM">
+          Db2 Survey
+        </HeaderName>
+      </Header>
+      <Content id="main-content">
+        <div style={{ padding: '4rem', textAlign: 'center' }}>
+          <Heading>Loading survey...</Heading>
+        </div>
+      </Content>
       </Theme>
     );
   }
@@ -70,33 +70,34 @@ function AppShell() {
   if (error) {
     return (
       <Theme theme="g90">
-        <Header aria-label="Zora Survey">
-          <HeaderName href="/" prefix="IBM">
-            Zora Survey
-          </HeaderName>
-        </Header>
-        <Content id="main-content">
-          <div style={{ padding: '4rem', textAlign: 'center' }}>
-            <Heading>Error loading survey</Heading>
-            <p style={{ marginTop: '1rem' }}>{error}</p>
-          </div>
-        </Content>
+      <Header aria-label="IBM Db2 Survey">
+        <HeaderName href="/" prefix="IBM">
+          Db2 Survey
+        </HeaderName>
+      </Header>
+      <Content id="main-content">
+        <div style={{ padding: '4rem', textAlign: 'center' }}>
+          <Heading>Error loading survey</Heading>
+          <p style={{ marginTop: '1rem' }}>{error}</p>
+        </div>
+      </Content>
       </Theme>
     );
   }
 
-  const isDashboardRoute = location.pathname === '/dashboard' || location.pathname === '/';
+  const isDashboardRoute = location.pathname === '/dashboard';
   const isSurveyRoute = location.pathname.startsWith('/survey');
+  const isLandingRoute = location.pathname === '/';
 
   // Show login for dashboard access
   if (isDashboardRoute && !isAuthenticated) {
     return (
       <Theme theme="g90">
-        <Header aria-label="Zora Survey">
-          <HeaderName href="/" prefix="IBM">
-            Zora Survey
-          </HeaderName>
-        </Header>
+      <Header aria-label="IBM Db2 Survey">
+        <HeaderName href="/" prefix="IBM">
+          Db2 Survey
+        </HeaderName>
+      </Header>
         <Content id="main-content">
           <div style={{ padding: '2rem 0', minHeight: 'calc(100vh - 48px)', maxWidth: '1280px', margin: '0 auto' }}>
             <div style={{ padding: '0 2rem' }}>
@@ -110,9 +111,9 @@ function AppShell() {
 
   return (
     <Theme theme="g90">
-      <Header aria-label="Zora Survey">
-        <HeaderName href="/survey" prefix="IBM">
-          Zora Survey
+      <Header aria-label="IBM Db2 Survey">
+        <HeaderName href="/" prefix="IBM">
+          Db2 Survey
         </HeaderName>
         <HeaderGlobalBar>
           <HeaderGlobalAction aria-label="Notifications" tooltipAlignment="end">
@@ -149,18 +150,7 @@ function AppShell() {
         <Routes>
           <Route 
             path="/" 
-            element={
-              <DashboardPage
-                problems={problems}
-                currentConfig={config}
-                onLaunchSurvey={(sessionId) => {
-                  window.open(`/survey/${sessionId}`, '_blank');
-                }}
-                onConfigUpdate={() => {
-                  window.location.reload();
-                }}
-              />
-            } 
+            element={<LandingPage />} 
           />
           <Route 
             path="/dashboard" 

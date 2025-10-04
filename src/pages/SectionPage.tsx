@@ -107,7 +107,7 @@ export const SectionPage: React.FC<SectionPageProps> = ({
           kind="primary"
           size="lg"
         >
-          {currentSectionIndex < totalSections - 1 ? 'Next Section' : 'Continue'}
+          Next
         </Button>
       </div>
     </div>

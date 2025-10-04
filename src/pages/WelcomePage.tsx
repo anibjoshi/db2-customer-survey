@@ -33,7 +33,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
       alignItems: 'center'
     }}>
       <Heading style={{ marginBottom: '1.5rem', fontSize: '2.5rem' }}>
-        {config?.title || 'Survey'}
+        Db2 Survey
       </Heading>
       <p style={{ 
         fontSize: '1.125rem', 
@@ -49,26 +49,10 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
         textAlign: 'left', 
         marginBottom: '2rem', 
         width: '100%',
-        minHeight: '450px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          marginBottom: '2.5rem' 
-        }}>
-          <img 
-            src="/image.png" 
-            alt="Zora Survey" 
-            style={{ 
-              maxWidth: '500px', 
-              height: 'auto',
-              objectFit: 'contain'
-            }} 
-          />
-        </div>
         <div style={{ marginBottom: '1rem' }}>
           <TextInput
             id="name-input"
@@ -85,7 +69,10 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
             labelText="Email Address (Optional)"
             placeholder="your.email@company.com"
             value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
+            onChange={(e) => {
+              const emailValue = e.target.value.trim().toLowerCase();
+              onEmailChange(emailValue);
+            }}
             type="email"
           />
         </div>

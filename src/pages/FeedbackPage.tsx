@@ -59,7 +59,7 @@ export const FeedbackPage: React.FC<FeedbackPageProps> = ({
           kind="primary"
           size="lg"
         >
-          Submit Survey
+          Submit survey
         </Button>
       </div>
     </div>
