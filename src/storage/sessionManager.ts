@@ -1,33 +1,21 @@
 import { SurveySession } from '../types';
+import { api } from '../api/client';
 
-const SESSIONS_KEY = 'zora_survey_sessions';
 const ACTIVE_SESSION_KEY = 'zora_active_session';
 
 export const sessionManager = {
   // Get all sessions
-  getAllSessions(): SurveySession[] {
-    if (typeof window === 'undefined') return [];
+  async getAllSessions(): Promise<SurveySession[]> {
     try {
-      const data = localStorage.getItem(SESSIONS_KEY);
-      return data ? JSON.parse(data) : [];
+      return await api.getAllSessions();
     } catch (error) {
       console.error('Failed to load sessions:', error);
       return [];
     }
   },
 
-  // Save sessions
-  saveSessions(sessions: SurveySession[]): void {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-    } catch (error) {
-      console.error('Failed to save sessions:', error);
-    }
-  },
-
   // Create new session
-  createSession(name: string, description?: string): SurveySession {
+  async createSession(name: string, description?: string): Promise<SurveySession> {
     const session: SurveySession = {
       id: `session-${Date.now()}`,
       name,
@@ -37,60 +25,35 @@ export const sessionManager = {
       responseCount: 0
     };
 
-    const sessions = this.getAllSessions();
-    sessions.push(session);
-    this.saveSessions(sessions);
-
-    return session;
+    return await api.createSession(session);
   },
 
   // Set active session
   setActiveSession(sessionId: string): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(ACTIVE_SESSION_KEY, sessionId);
-
-    // Update isActive flag
-    const sessions = this.getAllSessions();
-    const updated = sessions.map(s => ({
-      ...s,
-      isActive: s.id === sessionId
-    }));
-    this.saveSessions(updated);
   },
 
   // Get active session
-  getActiveSession(): SurveySession | null {
+  getActiveSession(): string | null {
     if (typeof window === 'undefined') return null;
-    const activeId = localStorage.getItem(ACTIVE_SESSION_KEY);
-    if (!activeId) return null;
-
-    const sessions = this.getAllSessions();
-    return sessions.find(s => s.id === activeId) || null;
+    return localStorage.getItem(ACTIVE_SESSION_KEY);
   },
 
   // Get session by ID
-  getSessionById(sessionId: string): SurveySession | null {
-    const sessions = this.getAllSessions();
-    return sessions.find(s => s.id === sessionId) || null;
-  },
-
-  // Update session response count
-  updateResponseCount(sessionId: string, count: number): void {
-    const sessions = this.getAllSessions();
-    const updated = sessions.map(s => 
-      s.id === sessionId ? { ...s, responseCount: count } : s
-    );
-    this.saveSessions(updated);
+  async getSessionById(sessionId: string): Promise<SurveySession | null> {
+    try {
+      return await api.getSession(sessionId);
+    } catch (error) {
+      console.error('Failed to get session:', error);
+      return null;
+    }
   },
 
   // End session (set inactive)
-  endSession(sessionId: string): void {
-    const sessions = this.getAllSessions();
-    const updated = sessions.map(s => 
-      s.id === sessionId ? { ...s, isActive: false } : s
-    );
-    this.saveSessions(updated);
-
+  async endSession(sessionId: string): Promise<void> {
+    await api.updateSession(sessionId, { isActive: false });
+    
     // Clear active if ending active session
     if (localStorage.getItem(ACTIVE_SESSION_KEY) === sessionId) {
       localStorage.removeItem(ACTIVE_SESSION_KEY);
@@ -98,11 +61,9 @@ export const sessionManager = {
   },
 
   // Delete session
-  deleteSession(sessionId: string): void {
-    const sessions = this.getAllSessions();
-    const filtered = sessions.filter(s => s.id !== sessionId);
-    this.saveSessions(filtered);
-
+  async deleteSession(sessionId: string): Promise<void> {
+    await api.deleteSession(sessionId);
+    
     // Clear active if deleting active session
     if (localStorage.getItem(ACTIVE_SESSION_KEY) === sessionId) {
       localStorage.removeItem(ACTIVE_SESSION_KEY);

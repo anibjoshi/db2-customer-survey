@@ -29,3 +29,10 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Database
+server/survey.db
+server/survey.db-journal
+
+# Server
+server/node_modules

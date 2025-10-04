@@ -4,8 +4,8 @@ import { Heading } from '@carbon/react';
 import { Response, SurveySubmission } from '../types';
 import { DEFAULT_RATING } from '../constants';
 import { generateId } from '../utils';
-import { saveSubmission, initDatabase } from '../storage/database';
 import { sessionManager } from '../storage/sessionManager';
+import { api } from '../api/client';
 import { WelcomePage, SectionPage, FeedbackPage, ThankYouPage } from '../pages';
 import { Problem } from '../types';
 
@@ -29,21 +29,20 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
 
   // Check if session is valid and active
   useEffect(() => {
-    if (!sessionId) {
-      setSessionValid(false);
-      return;
-    }
+    const checkSession = async () => {
+      if (!sessionId) {
+        setSessionValid(false);
+        return;
+      }
 
-    const session = sessionManager.getSessionById(sessionId);
-    if (!session || !session.isActive) {
-      setSessionValid(false);
-    }
+      const session = await sessionManager.getSessionById(sessionId);
+      if (!session || !session.isActive) {
+        setSessionValid(false);
+      }
+    };
+    
+    checkSession();
   }, [sessionId]);
-
-  // Initialize database and responses
-  useEffect(() => {
-    initDatabase().catch(err => console.error('Failed to initialize database:', err));
-  }, []);
 
   useEffect(() => {
     if (problems.length > 0 && responses.length === 0) {
@@ -104,7 +103,7 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentSectionIndex]);
 
-  const handleSubmitSurvey = useCallback(() => {
+  const handleSubmitSurvey = useCallback(async () => {
     const submission: SurveySubmission = {
       id: generateId(),
       responses,
@@ -112,21 +111,13 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
       timestamp: new Date().toISOString(),
     };
 
-    // Save to SQLite database
+    // Save to backend database
     try {
-      saveSubmission(submission, name, email, sessionId);
+      await api.submitSurvey(submission, name, email, sessionId);
       
-      // Show thank you page and update session count
+      // Show thank you page
       setCurrentStep('thankyou');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      
-      // Update session response count asynchronously
-      if (sessionId) {
-        import('../storage/database').then(({ getSubmissionsBySession }) => {
-          const sessionSubmissions = getSubmissionsBySession(sessionId);
-          sessionManager.updateResponseCount(sessionId, sessionSubmissions.length);
-        });
-      }
     } catch (error) {
       console.error('Failed to save submission:', error);
       alert('Failed to save your response. Please try again.');

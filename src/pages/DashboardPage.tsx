@@ -15,7 +15,7 @@ import {
 import { Add, Launch, TrashCan, Checkmark, StopFilled, View } from '@carbon/icons-react';
 import { SurveySession, SurveySubmission, Problem, AggregatePoint } from '../types';
 import { sessionManager } from '../storage/sessionManager';
-import { getSubmissionsBySession } from '../storage/database';
+import { api } from '../api/client';
 import { ResponsesTable, ScatterPlot, Legend, SurveyConfigEditor } from '../components';
 import { calculateAverage } from '../utils';
 import { DEFAULT_RATING } from '../constants';
@@ -43,8 +43,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [allSubmissions, setAllSubmissions] = useState<SurveySubmission[]>([]);
   const [activeTab, setActiveTab] = useState<'sessions' | 'results' | 'all' | 'config'>('sessions');
 
-  const loadSessions = () => {
-    setSessions(sessionManager.getAllSessions());
+  const loadSessions = async () => {
+    const sessions = await sessionManager.getAllSessions();
+    setSessions(sessions);
+  };
+
+  const loadAllSubmissions = async () => {
+    const submissions = await api.getAllSubmissions();
+    setAllSubmissions(submissions);
   };
 
   useEffect(() => {
@@ -52,22 +58,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     loadAllSubmissions();
   }, []);
 
-  const loadAllSubmissions = async () => {
-    const { getAllSubmissions, initDatabase } = await import('../storage/database');
-    await initDatabase();
-    const submissions = getAllSubmissions();
-    setAllSubmissions(submissions);
-  };
-
-  const handleCreateSession = () => {
+  const handleCreateSession = async () => {
     if (!newSessionName.trim()) return;
 
-    sessionManager.createSession(
+    await sessionManager.createSession(
       newSessionName.trim(),
       newSessionDesc.trim() || undefined
     );
 
-    loadSessions();
+    await loadSessions();
     setNewSessionName('');
     setNewSessionDesc('');
     setShowCreateForm(false);
@@ -75,21 +74,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const handleLaunchSession = (sessionId: string) => {
     sessionManager.setActiveSession(sessionId);
-    loadSessions();
     onLaunchSurvey(sessionId);
   };
 
-  const handleEndSession = (sessionId: string) => {
+  const handleEndSession = async (sessionId: string) => {
     if (window.confirm('Are you sure you want to end this session? The survey link will no longer work.')) {
-      sessionManager.endSession(sessionId);
-      loadSessions();
+      await sessionManager.endSession(sessionId);
+      await loadSessions();
     }
   };
 
-  const handleDeleteSession = (sessionId: string) => {
+  const handleDeleteSession = async (sessionId: string) => {
     if (window.confirm('Are you sure you want to delete this session and all its responses? This cannot be undone.')) {
-      sessionManager.deleteSession(sessionId);
-      loadSessions();
+      await sessionManager.deleteSession(sessionId);
+      await loadSessions();
+      // Reload all submissions if we're on that tab
+      if (activeTab === 'all') {
+        await loadAllSubmissions();
+      }
     }
   };
 
@@ -98,9 +100,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setActiveTab('results');
     
     // Load submissions for this session
-    const { getSubmissionsBySession, initDatabase } = await import('../storage/database');
-    await initDatabase();
-    const submissions = getSubmissionsBySession(sessionId);
+    const submissions = await api.getSessionSubmissions(sessionId);
     setSelectedSessionSubmissions(submissions);
   };
 

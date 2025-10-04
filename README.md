@@ -33,56 +33,66 @@ A modern React application for collecting and visualizing customer feedback on D
 - Node.js 18+ 
 - npm or yarn
 
-### Installation
+### Installation (Single Command)
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd zora-customer-survey
-```
-
-2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Start the development server:
+This will automatically install both frontend and backend dependencies.
+
+### Development
+
+**Run both frontend and backend together:**
 ```bash
-npm run dev
+npm run dev:all
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+**Or run separately:**
+```bash
+# Terminal 1 - Frontend (http://localhost:3000)
+npm run dev
+
+# Terminal 2 - Backend (http://localhost:3001)
+npm run dev:server
+```
 
 ### Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
+- `npm install` - Install all dependencies (frontend + backend)
+- `npm run dev:all` - Start both frontend and backend
+- `npm run dev` - Start frontend only
+- `npm run dev:server` - Start backend only
+- `npm run build` - Build both frontend and backend for production
+- `npm start` - Start production server
 - `npm run lint` - Run ESLint
 
 ## Deployment
 
-### Vercel (Recommended)
+### Serverless Deployment (Vercel)
 
 1. Push your code to GitHub
 2. Connect your repository to [Vercel](https://vercel.com)
-3. Deploy automatically on every push
+3. Vercel will automatically:
+   - Detect the monorepo structure
+   - Build the frontend (`dist/`)
+   - Deploy the backend as serverless functions
+4. Set environment variable: `VITE_API_URL` to your API URL
 
-### Netlify
+### Database Considerations
 
-1. Push your code to GitHub
-2. Connect your repository to [Netlify](https://netlify.com)
-3. Set build command: `npm run build`
-4. Set publish directory: `dist`
+For serverless, you'll need to use:
+- **Vercel Postgres** or **Planetscale** for production database
+- Or deploy the backend separately on a VM with persistent storage
 
-### Manual Deployment
+### Local Production Build
 
-1. Build the project:
 ```bash
 npm run build
+npm start
 ```
 
-2. Upload the `dist` folder to your web server
+Serves the app on `http://localhost:3001`
 
 ## Usage
 
