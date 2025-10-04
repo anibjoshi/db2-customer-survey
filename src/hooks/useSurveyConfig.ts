@@ -41,7 +41,8 @@ export const useSurveyConfig = () => {
     const loadConfig = async () => {
       try {
         // Try loading from API first (database)
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 
+          (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:3001/api');
         const response = await fetch(`${API_BASE_URL}/config`);
         
         if (response.ok) {

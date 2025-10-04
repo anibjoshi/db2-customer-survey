@@ -3,7 +3,8 @@ import { Button, Tile, Heading, SkeletonText } from '@carbon/react';
 import { Ai } from '@carbon/icons-react';
 import { SurveySubmission } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:3001/api');
 
 interface AISummaryProps {
   submissions: SurveySubmission[];
