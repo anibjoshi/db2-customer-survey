@@ -16,7 +16,8 @@ const openai = new OpenAI({
 });
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+// Port will be set by cloud provider (Code Engine, Railway, etc.) or default to 3001
+const PORT = process.env.PORT || process.env.X_ZOHO_CATALYST_LISTEN_PORT || 3001;
 
 // Db2 connection string
 // Format: DATABASE=dbname;HOSTNAME=host;PORT=50000;PROTOCOL=TCPIP;UID=username;PWD=password;

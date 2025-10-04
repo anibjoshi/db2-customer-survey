@@ -9,8 +9,8 @@ COPY tsconfig*.json ./
 COPY vite.config.ts ./
 COPY index.html ./
 
-# Install frontend dependencies
-RUN npm ci
+# Install frontend dependencies (skip postinstall)
+RUN npm ci --ignore-scripts
 
 # Copy frontend source
 COPY src ./src
