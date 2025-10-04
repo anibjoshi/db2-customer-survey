@@ -152,8 +152,12 @@ function AppShell() {
             element={
               <DashboardPage
                 problems={problems}
+                currentConfig={config}
                 onLaunchSurvey={(sessionId) => {
                   window.open(`/survey/${sessionId}`, '_blank');
+                }}
+                onConfigUpdate={() => {
+                  window.location.reload();
                 }}
               />
             } 
@@ -163,8 +167,12 @@ function AppShell() {
             element={
               <DashboardPage
                 problems={problems}
+                currentConfig={config}
                 onLaunchSurvey={(sessionId) => {
                   window.open(`/survey/${sessionId}`, '_blank');
+                }}
+                onConfigUpdate={() => {
+                  window.location.reload();
                 }}
               />
             } 

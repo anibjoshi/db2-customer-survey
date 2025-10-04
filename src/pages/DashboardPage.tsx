@@ -16,18 +16,23 @@ import { Add, Launch, TrashCan, Checkmark, StopFilled, View } from '@carbon/icon
 import { SurveySession, SurveySubmission, Problem, AggregatePoint } from '../types';
 import { sessionManager } from '../storage/sessionManager';
 import { getSubmissionsBySession } from '../storage/database';
-import { ResponsesTable, ScatterPlot, Legend } from '../components';
+import { ResponsesTable, ScatterPlot, Legend, SurveyConfigEditor } from '../components';
 import { calculateAverage } from '../utils';
 import { DEFAULT_RATING } from '../constants';
+import { SurveyConfig } from '../hooks/useSurveyConfig';
 
 interface DashboardPageProps {
   problems: Problem[];
+  currentConfig: SurveyConfig | null;
   onLaunchSurvey: (sessionId: string) => void;
+  onConfigUpdate: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ 
   problems,
-  onLaunchSurvey 
+  currentConfig,
+  onLaunchSurvey,
+  onConfigUpdate
 }) => {
   const [sessions, setSessions] = useState<SurveySession[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -36,7 +41,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedSessionSubmissions, setSelectedSessionSubmissions] = useState<SurveySubmission[]>([]);
   const [allSubmissions, setAllSubmissions] = useState<SurveySubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'sessions' | 'results' | 'all'>('sessions');
+  const [activeTab, setActiveTab] = useState<'sessions' | 'results' | 'all' | 'config'>('sessions');
 
   const loadSessions = () => {
     setSessions(sessionManager.getAllSessions());
@@ -223,6 +228,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             }}
           >
             All Results
+          </button>
+          <button
+            onClick={() => setActiveTab('config')}
+            style={{
+              padding: '1rem 1.5rem',
+              backgroundColor: activeTab === 'config' ? '#0f62fe' : 'transparent',
+              color: activeTab === 'config' ? 'white' : '#f4f4f4',
+              border: 'none',
+              borderBottom: activeTab === 'config' ? '2px solid #0f62fe' : 'none',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600'
+            }}
+          >
+            Survey Config
           </button>
         </div>
 
@@ -475,6 +495,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </Tile>
             )}
           </div>
+        )}
+
+        {/* Survey Config Tab Content */}
+        {activeTab === 'config' && (
+          <SurveyConfigEditor
+            currentConfig={currentConfig}
+            onConfigSaved={onConfigUpdate}
+          />
         )}
       </div>
     </div>

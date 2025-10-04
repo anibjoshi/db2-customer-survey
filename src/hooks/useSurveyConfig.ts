@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Problem, ProblemGroup } from '../types';
+import { configManager } from '../storage/configManager';
 
 interface SurveySection {
   id: string;
@@ -11,7 +12,7 @@ interface SurveySection {
   }>;
 }
 
-interface SurveyConfig {
+export interface SurveyConfig {
   title: string;
   description: string;
   sections: SurveySection[];
@@ -37,21 +38,30 @@ export const useSurveyConfig = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/survey-config.json')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to load survey configuration');
-        }
-        return response.json();
-      })
-      .then((data: SurveyConfig) => {
-        setConfig(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+    // Check for custom config first
+    const customConfig = configManager.loadConfig();
+    
+    if (customConfig) {
+      setConfig(customConfig);
+      setLoading(false);
+    } else {
+      // Load from JSON file
+      fetch('/survey-config.json')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to load survey configuration');
+          }
+          return response.json();
+        })
+        .then((data: SurveyConfig) => {
+          setConfig(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          setError(err.message);
+          setLoading(false);
+        });
+    }
   }, []);
 
   // Transform config to match existing Problem type
