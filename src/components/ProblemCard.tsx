@@ -21,7 +21,7 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, response, onU
           <RadioButtonGroup
             name={`question-${problem.id}`}
             valueSelected={response.textResponse || ''}
-            onChange={(value: string) => onUpdate({ ...response, textResponse: value })}
+            onChange={(value) => onUpdate({ ...response, textResponse: String(value) })}
             orientation="vertical"
           >
             {problem.options?.map((option, index) => (

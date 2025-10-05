@@ -53,8 +53,8 @@ export const ResultsRoute: React.FC<ResultsRouteProps> = ({ problems }) => {
 
       return {
         id: problem.id,
-        x: calculateAverage(problemResponses.map(r => r.frequency)),
-        y: calculateAverage(problemResponses.map(r => r.severity)),
+        x: calculateAverage(problemResponses.map(r => r.frequency).filter((f): f is number => f !== undefined)),
+        y: calculateAverage(problemResponses.map(r => r.severity).filter((s): s is number => s !== undefined)),
         group: problem.group,
         title: problem.title,
       };

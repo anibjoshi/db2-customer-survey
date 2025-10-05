@@ -95,4 +95,6 @@ export const GROUP_COLORS: Record<ProblemGroup, string> = {
   'Incident Analysis & Resolution': '#10b981',
   'Monitoring & Anomaly Detection': '#8b5cf6',
   'Maintenance & Operations': '#f59e0b',
+  'AI Deployment': '#ec4899',
+  'Db2 Workflows and Interfaces': '#06b6d4',
 };

@@ -118,7 +118,7 @@ export const ChoiceResultsChart: React.FC<ChoiceResultsChartProps> = ({ problems
                     },
                     bottom: {
                       mapsTo: 'key',
-                      scaleType: 'labels',
+                      scaleType: 'labels' as any,
                       truncation: {
                         type: 'mid_line',
                         threshold: 25,
