@@ -51,9 +51,13 @@ export const AISummary: React.FC<AISummaryProps> = ({ submissions, sessionId }) 
         if (response.ok) {
           const data = await response.json();
           setSummaryData(data);
+        } else if (response.status !== 404) {
+          // Only set error if it's not a "not found" response
+          setError('Failed to load existing insights');
         }
       } catch (err) {
-        // No existing insights, that's fine
+        console.error('Error loading AI insights:', err);
+        // No existing insights, that's fine - don't show error
       } finally {
         setLoadingExisting(false);
       }

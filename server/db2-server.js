@@ -558,7 +558,7 @@ app.get('/api/ai-summary/:sessionId?', async (req, res) => {
     let query = 'SELECT * FROM SURVEYS.AI_INSIGHTS';
     let params = [];
     
-    if (sessionId && sessionId !== 'null') {
+    if (sessionId && sessionId !== 'null' && sessionId !== 'undefined') {
       query += ' WHERE SESSION_ID = ? ORDER BY GENERATED_AT DESC FETCH FIRST 1 ROWS ONLY';
       params = [sessionId];
     } else {

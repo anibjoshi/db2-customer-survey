@@ -46,6 +46,7 @@ export const ConfigEditor: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeConfigId, setActiveConfigId] = useState<string>('');
+  const [saving, setSaving] = useState(false);
 
   const loadSections = async () => {
     try {
@@ -101,6 +102,9 @@ export const ConfigEditor: React.FC = () => {
       return;
     }
     
+    setSaving(true);
+    setError('');
+    
     try {
       const response = await fetch(`${API_BASE_URL}/config/sections`, {
         method: 'POST',
@@ -123,6 +127,7 @@ export const ConfigEditor: React.FC = () => {
         // Force reload sections
         await loadSections();
         
+        // Clear success message after 3 seconds
         setTimeout(() => setSuccess(''), 3000);
       } else {
         const errorData = await response.json();
@@ -130,6 +135,8 @@ export const ConfigEditor: React.FC = () => {
       }
     } catch (err: any) {
       setError('Failed to add section: ' + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -321,8 +328,9 @@ export const ConfigEditor: React.FC = () => {
                 setSectionColor('');
                 setShowSectionModal(true);
               }}
+              disabled={saving}
             >
-              Add Section
+              {saving ? 'Saving...' : 'Add Section'}
             </Button>
           </div>
 

@@ -10,9 +10,10 @@ import {
   TableRow,
   TableHeader,
   TableBody,
-  TableCell
+  TableCell,
+  SkeletonText
 } from '@carbon/react';
-import { Add, Launch, TrashCan, Checkmark, StopFilled, View } from '@carbon/icons-react';
+import { Add, Launch, TrashCan, Checkmark, StopFilled, View, Download } from '@carbon/icons-react';
 import { SurveySession, SurveySubmission, Problem, AggregatePoint } from '../types';
 import { sessionManager } from '../storage/sessionManager';
 import { api } from '../api/client';
@@ -20,6 +21,7 @@ import { ResponsesTable, ScatterPlot, Legend, ConfigEditor, AISummary, ChoiceRes
 import { calculateAverage } from '../utils';
 import { DEFAULT_RATING } from '../constants';
 import { SurveyConfig } from '../hooks/useSurveyConfig';
+import { exportToCSV } from '../utils/csvExport';
 
 interface DashboardPageProps {
   problems: Problem[];
@@ -44,6 +46,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [activeTab, setActiveTab] = useState<'sessions' | 'results' | 'all' | 'config'>('sessions');
   const [resultsSubTab, setResultsSubTab] = useState<'analysis' | 'details'>('analysis');
   const [allResultsSubTab, setAllResultsSubTab] = useState<'analysis' | 'details'>('analysis');
+  const [loadingResults, setLoadingResults] = useState(false);
 
   const loadSessions = async () => {
     const sessions = await sessionManager.getAllSessions();
@@ -65,11 +68,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         loadSessions();
       } else if (activeTab === 'all') {
         loadAllSubmissions();
+      } else if (activeTab === 'results' && selectedSessionId) {
+        // Reload session results when viewing them
+        handleViewSessionResults(selectedSessionId);
       }
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [activeTab]);
+  }, [activeTab, selectedSessionId]);
 
   const handleCreateSession = async () => {
     if (!newSessionName.trim()) return;
@@ -119,10 +125,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const handleViewSessionResults = async (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setActiveTab('results');
+    setLoadingResults(true);
     
-    // Load submissions for this session
-    const submissions = await api.getSessionSubmissions(sessionId);
-    setSelectedSessionSubmissions(submissions);
+    try {
+      // Load submissions for this session
+      const submissions = await api.getSessionSubmissions(sessionId);
+      setSelectedSessionSubmissions(submissions);
+    } catch (error) {
+      console.error('Error loading session results:', error);
+    } finally {
+      setLoadingResults(false);
+    }
   };
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
@@ -459,7 +472,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </p>
                   </div>
 
-                  {selectedSessionSubmissions.length > 0 ? (
+                  {loadingResults ? (
+                    <Tile style={{ padding: '2rem' }}>
+                      <SkeletonText paragraph lineCount={5} />
+                    </Tile>
+                  ) : selectedSessionSubmissions.length > 0 ? (
                     <>
                       {/* AI Summary */}
                       <AISummary 
@@ -529,9 +546,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       {/* Detailed Responses Tab */}
                       {resultsSubTab === 'details' && (
                         <div>
-                          <Heading style={{ marginBottom: '1.5rem' }}>
-                            Detailed Responses
-                          </Heading>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            marginBottom: '1.5rem' 
+                          }}>
+                            <Heading style={{ marginBottom: 0 }}>
+                              Detailed Responses
+                            </Heading>
+                            <Button
+                              onClick={() => exportToCSV(selectedSessionSubmissions)}
+                              disabled={selectedSessionSubmissions.length === 0}
+                              kind="primary"
+                              renderIcon={Download}
+                            >
+                              Download CSV
+                            </Button>
+                          </div>
                           <ResponsesTable 
                             submissions={selectedSessionSubmissions} 
                             problems={problems} 
@@ -630,9 +662,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {/* Detailed Responses Tab */}
                 {allResultsSubTab === 'details' && (
                   <div>
-                    <Heading style={{ marginBottom: '1.5rem' }}>
-                      All Responses
-                    </Heading>
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      marginBottom: '1.5rem' 
+                    }}>
+                      <Heading style={{ marginBottom: 0 }}>
+                        All Responses
+                      </Heading>
+                      <Button
+                        onClick={() => exportToCSV(allSubmissions)}
+                        disabled={allSubmissions.length === 0}
+                        kind="primary"
+                        renderIcon={Download}
+                      >
+                        Download CSV
+                      </Button>
+                    </div>
                     <ResponsesTable 
                       submissions={allSubmissions} 
                       problems={problems} 

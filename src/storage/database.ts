@@ -91,7 +91,7 @@ export const saveSubmission = (
   submission.responses.forEach(response => {
     db!.run(
       'INSERT INTO responses (submission_id, problem_id, frequency, severity) VALUES (?, ?, ?, ?)',
-      [submission.id, response.problemId, response.frequency, response.severity]
+      [submission.id, response.problemId, response.frequency ?? null, response.severity ?? null]
     );
   });
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
   Table,
   TableHead,
@@ -30,35 +30,6 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
     }
     setExpandedRows(newExpanded);
   };
-
-  // Calculate aggregates (no longer used, but kept for backward compatibility)
-  const aggregates = useMemo(() => {
-    if (submissions.length === 0) return null;
-
-    const totalResponses = submissions.length;
-    const avgFrequency = submissions.reduce((sum, sub) => {
-      const validResponses = sub.responses.filter(r => r.frequency !== undefined);
-      if (validResponses.length === 0) return sum;
-      const avg = validResponses.reduce((s, r) => s + (r.frequency || 0), 0) / validResponses.length;
-      return sum + avg;
-    }, 0) / totalResponses;
-
-    const avgSeverity = submissions.reduce((sum, sub) => {
-      const validResponses = sub.responses.filter(r => r.severity !== undefined);
-      if (validResponses.length === 0) return sum;
-      const avg = validResponses.reduce((s, r) => s + (r.severity || 0), 0) / validResponses.length;
-      return sum + avg;
-    }, 0) / totalResponses;
-
-    const withNotes = submissions.filter(s => s.notes).length;
-
-    return {
-      totalResponses,
-      avgFrequency: avgFrequency.toFixed(1),
-      avgSeverity: avgSeverity.toFixed(1),
-      withNotesPercent: ((withNotes / totalResponses) * 100).toFixed(0)
-    };
-  }, [submissions]);
 
   return (
     <div>
@@ -124,15 +95,8 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
                                   responseText = response.textResponse.replace(/\|\|\|/g, ', ');
                                 } else if (problem?.questionType === 'slider-labeled') {
                                   // Slider-labeled uses frequency field to store position (1-5)
-                                  const sliderLabels = [
-                                    'Entirely CLI / Automated',
-                                    'Mostly CLI',
-                                    'Balanced',
-                                    'Mostly GUI',
-                                    'Entirely GUI'
-                                  ];
                                   const position = response.frequency || 3;
-                                  responseText = sliderLabels[position - 1] || `Position ${position}`;
+                                  responseText = problem.options?.[position - 1] || `Position ${position}`;
                                 } else if (response.frequency !== undefined && response.severity !== undefined) {
                                   // Regular slider questions
                                   responseText = `Freq: ${response.frequency}, Sev: ${response.severity}`;
