@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Problem, ProblemGroup } from '../types';
+import { Problem, ProblemGroup, QuestionType } from '../types';
 import { configManager } from '../storage/configManager';
 
 interface SurveySection {
@@ -9,6 +9,8 @@ interface SurveySection {
   problems: Array<{
     id: number;
     title: string;
+    questionType?: QuestionType;
+    options?: string[];
   }>;
 }
 
@@ -83,7 +85,9 @@ export const useSurveyConfig = () => {
         section.problems.map(problem => ({
           id: problem.id,
           title: problem.title,
-          group: section.name as ProblemGroup
+          group: section.name as ProblemGroup,
+          questionType: problem.questionType || 'slider',
+          options: problem.options
         }))
       )
     : [];

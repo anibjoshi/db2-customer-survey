@@ -6,3 +6,4 @@ export { ResponsesTable } from './ResponsesTable';
 export { SurveyConfigEditor } from './SurveyConfigEditor';
 export { ConfigEditor } from './ConfigEditor';
 export { AISummary } from './AISummary';
+export { ChoiceResultsChart } from './ChoiceResultsChart';

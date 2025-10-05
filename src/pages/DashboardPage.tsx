@@ -16,7 +16,7 @@ import { Add, Launch, TrashCan, Checkmark, StopFilled, View } from '@carbon/icon
 import { SurveySession, SurveySubmission, Problem, AggregatePoint } from '../types';
 import { sessionManager } from '../storage/sessionManager';
 import { api } from '../api/client';
-import { ResponsesTable, ScatterPlot, Legend, ConfigEditor, AISummary } from '../components';
+import { ResponsesTable, ScatterPlot, Legend, ConfigEditor, AISummary, ChoiceResultsChart } from '../components';
 import { calculateAverage } from '../utils';
 import { DEFAULT_RATING } from '../constants';
 import { SurveyConfig } from '../hooks/useSurveyConfig';
@@ -42,6 +42,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [selectedSessionSubmissions, setSelectedSessionSubmissions] = useState<SurveySubmission[]>([]);
   const [allSubmissions, setAllSubmissions] = useState<SurveySubmission[]>([]);
   const [activeTab, setActiveTab] = useState<'sessions' | 'results' | 'all' | 'config'>('sessions');
+  const [resultsSubTab, setResultsSubTab] = useState<'analysis' | 'details'>('analysis');
+  const [allResultsSubTab, setAllResultsSubTab] = useState<'analysis' | 'details'>('analysis');
 
   const loadSessions = async () => {
     const sessions = await sessionManager.getAllSessions();
@@ -125,10 +127,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
 
-  // Calculate aggregates for selected session
+  // Calculate aggregates for selected session (only slider questions)
   const sessionAggregates: AggregatePoint[] = React.useMemo(() => {
+    // Filter to only slider-type questions for the priority matrix
+    const sliderProblems = problems.filter(p => p.questionType === 'slider' || !p.questionType);
+    
     if (selectedSessionSubmissions.length === 0) {
-      return problems.map(problem => ({
+      return sliderProblems.map(problem => ({
         id: problem.id,
         x: DEFAULT_RATING,
         y: DEFAULT_RATING,
@@ -137,25 +142,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }));
     }
 
-    return problems.map(problem => {
+    return sliderProblems.map(problem => {
       const problemResponses = selectedSessionSubmissions.flatMap(submission =>
         submission.responses.filter(response => response.problemId === problem.id)
       );
 
+      // Filter out undefined values for choice-based questions
+      const frequencies = problemResponses.map(r => r.frequency).filter((f): f is number => f !== undefined);
+      const severities = problemResponses.map(r => r.severity).filter((s): s is number => s !== undefined);
+
       return {
         id: problem.id,
-        x: calculateAverage(problemResponses.map(r => r.frequency)),
-        y: calculateAverage(problemResponses.map(r => r.severity)),
+        x: frequencies.length > 0 ? calculateAverage(frequencies) : DEFAULT_RATING,
+        y: severities.length > 0 ? calculateAverage(severities) : DEFAULT_RATING,
         group: problem.group,
         title: problem.title,
       };
     });
   }, [selectedSessionSubmissions, problems]);
 
-  // Calculate aggregates for all submissions
+  // Calculate aggregates for all submissions (only slider questions)
   const allAggregates: AggregatePoint[] = React.useMemo(() => {
+    // Filter to only slider-type questions for the priority matrix
+    const sliderProblems = problems.filter(p => p.questionType === 'slider' || !p.questionType);
+    
     if (allSubmissions.length === 0) {
-      return problems.map(problem => ({
+      return sliderProblems.map(problem => ({
         id: problem.id,
         x: DEFAULT_RATING,
         y: DEFAULT_RATING,
@@ -164,15 +176,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       }));
     }
 
-    return problems.map(problem => {
+    return sliderProblems.map(problem => {
       const problemResponses = allSubmissions.flatMap(submission =>
         submission.responses.filter(response => response.problemId === problem.id)
       );
 
+      // Filter out undefined values for choice-based questions
+      const frequencies = problemResponses.map(r => r.frequency).filter((f): f is number => f !== undefined);
+      const severities = problemResponses.map(r => r.severity).filter((s): s is number => s !== undefined);
+
       return {
         id: problem.id,
-        x: calculateAverage(problemResponses.map(r => r.frequency)),
-        y: calculateAverage(problemResponses.map(r => r.severity)),
+        x: frequencies.length > 0 ? calculateAverage(frequencies) : DEFAULT_RATING,
+        y: severities.length > 0 ? calculateAverage(severities) : DEFAULT_RATING,
         group: problem.group,
         title: problem.title,
       };
@@ -451,24 +467,77 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         sessionId={selectedSessionId || undefined}
                       />
 
-                      {/* Priority Matrix for this session */}
-                      <div style={{ marginBottom: '3rem' }}>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <Legend groups={Array.from(new Set(problems.map(p => p.group)))} />
-                        </div>
-                        <ScatterPlot data={sessionAggregates} />
+                      {/* Sub-tabs for results */}
+                      <div style={{ 
+                        borderBottom: '1px solid #393939',
+                        marginBottom: '2rem',
+                        display: 'flex',
+                        gap: '0'
+                      }}>
+                        <button
+                          onClick={() => setResultsSubTab('analysis')}
+                          style={{
+                            padding: '0.75rem 1.5rem',
+                            backgroundColor: resultsSubTab === 'analysis' ? '#0f62fe' : 'transparent',
+                            color: resultsSubTab === 'analysis' ? 'white' : '#f4f4f4',
+                            border: 'none',
+                            borderBottom: resultsSubTab === 'analysis' ? '2px solid #0f62fe' : 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            fontWeight: '600'
+                          }}
+                        >
+                          Survey Analysis
+                        </button>
+                        <button
+                          onClick={() => setResultsSubTab('details')}
+                          style={{
+                            padding: '0.75rem 1.5rem',
+                            backgroundColor: resultsSubTab === 'details' ? '#0f62fe' : 'transparent',
+                            color: resultsSubTab === 'details' ? 'white' : '#f4f4f4',
+                            border: 'none',
+                            borderBottom: resultsSubTab === 'details' ? '2px solid #0f62fe' : 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            fontWeight: '600'
+                          }}
+                        >
+                          Detailed Responses
+                        </button>
                       </div>
 
-                      {/* Detailed responses */}
-                      <div style={{ marginTop: '3rem' }}>
-                        <Heading style={{ marginBottom: '1.5rem' }}>
-                          Detailed Responses
-                        </Heading>
-                        <ResponsesTable 
-                          submissions={selectedSessionSubmissions} 
-                          problems={problems} 
-                        />
-                      </div>
+                      {/* Survey Analysis Tab */}
+                      {resultsSubTab === 'analysis' && (
+                        <>
+                          <div style={{ marginBottom: '3rem' }}>
+                            <Heading style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>
+                              Priority Matrix
+                            </Heading>
+                            <div style={{ marginBottom: '1rem' }}>
+                              <Legend groups={Array.from(new Set(problems.filter(p => p.questionType === 'slider' || !p.questionType).map(p => p.group)))} />
+                            </div>
+                            <ScatterPlot data={sessionAggregates} />
+                          </div>
+
+                          <ChoiceResultsChart 
+                            problems={problems}
+                            submissions={selectedSessionSubmissions}
+                          />
+                        </>
+                      )}
+
+                      {/* Detailed Responses Tab */}
+                      {resultsSubTab === 'details' && (
+                        <div>
+                          <Heading style={{ marginBottom: '1.5rem' }}>
+                            Detailed Responses
+                          </Heading>
+                          <ResponsesTable 
+                            submissions={selectedSessionSubmissions} 
+                            problems={problems} 
+                          />
+                        </div>
+                      )}
                     </>
                   ) : (
                     <Tile style={{ padding: '2rem', textAlign: 'center' }}>
@@ -499,24 +568,77 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {/* AI Summary for All Results */}
                 <AISummary submissions={allSubmissions} />
 
-                {/* Aggregated Priority Matrix */}
-                <div style={{ marginBottom: '3rem' }}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <Legend groups={Array.from(new Set(problems.map(p => p.group)))} />
-                  </div>
-                  <ScatterPlot data={allAggregates} />
+                {/* Sub-tabs for all results */}
+                <div style={{ 
+                  borderBottom: '1px solid #393939',
+                  marginBottom: '2rem',
+                  display: 'flex',
+                  gap: '0'
+                }}>
+                  <button
+                    onClick={() => setAllResultsSubTab('analysis')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: allResultsSubTab === 'analysis' ? '#0f62fe' : 'transparent',
+                      color: allResultsSubTab === 'analysis' ? 'white' : '#f4f4f4',
+                      border: 'none',
+                      borderBottom: allResultsSubTab === 'analysis' ? '2px solid #0f62fe' : 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Survey Analysis
+                  </button>
+                  <button
+                    onClick={() => setAllResultsSubTab('details')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      backgroundColor: allResultsSubTab === 'details' ? '#0f62fe' : 'transparent',
+                      color: allResultsSubTab === 'details' ? 'white' : '#f4f4f4',
+                      border: 'none',
+                      borderBottom: allResultsSubTab === 'details' ? '2px solid #0f62fe' : 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Detailed Responses
+                  </button>
                 </div>
 
-                {/* All Responses Table */}
-                <div style={{ marginTop: '3rem' }}>
-                  <Heading style={{ marginBottom: '1.5rem' }}>
-                    All Responses
-                  </Heading>
-                  <ResponsesTable 
-                    submissions={allSubmissions} 
-                    problems={problems} 
-                  />
-                </div>
+                {/* Survey Analysis Tab */}
+                {allResultsSubTab === 'analysis' && (
+                  <>
+                    <div style={{ marginBottom: '3rem' }}>
+                      <Heading style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>
+                        Priority Matrix
+                      </Heading>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <Legend groups={Array.from(new Set(problems.filter(p => p.questionType === 'slider' || !p.questionType).map(p => p.group)))} />
+                      </div>
+                      <ScatterPlot data={allAggregates} />
+                    </div>
+
+                    <ChoiceResultsChart 
+                      problems={problems}
+                      submissions={allSubmissions}
+                    />
+                  </>
+                )}
+
+                {/* Detailed Responses Tab */}
+                {allResultsSubTab === 'details' && (
+                  <div>
+                    <Heading style={{ marginBottom: '1.5rem' }}>
+                      All Responses
+                    </Heading>
+                    <ResponsesTable 
+                      submissions={allSubmissions} 
+                      problems={problems} 
+                    />
+                  </div>
+                )}
               </>
             ) : (
               <Tile style={{ padding: '2rem', textAlign: 'center' }}>

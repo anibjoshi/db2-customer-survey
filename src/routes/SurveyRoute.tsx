@@ -49,11 +49,28 @@ export const SurveyRoute: React.FC<SurveyRouteProps> = ({ problems, groupColors,
     if (problems.length > 0) {
       console.log('Initializing responses for', problems.length, 'problems');
       setResponses(
-        problems.map(problem => ({
-          problemId: problem.id,
-          frequency: DEFAULT_RATING,
-          severity: DEFAULT_RATING,
-        }))
+        problems.map(problem => {
+          const questionType = problem.questionType || 'slider';
+          if (questionType === 'slider') {
+            return {
+              problemId: problem.id,
+              frequency: DEFAULT_RATING,
+              severity: DEFAULT_RATING,
+            };
+          } else if (questionType === 'slider-labeled') {
+            return {
+              problemId: problem.id,
+              frequency: 3, // Middle option
+              severity: 0,
+            };
+          } else {
+            // single-choice or multiple-choice
+            return {
+              problemId: problem.id,
+              textResponse: '',
+            };
+          }
+        })
       );
     }
   }, [problems]);

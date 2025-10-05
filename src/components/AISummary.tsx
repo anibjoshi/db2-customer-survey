@@ -21,6 +21,16 @@ interface AISummaryData {
     avgSeverity: string;
     score: string;
   }>;
+  choiceAnalysis?: Array<{
+    id: string;
+    title: string;
+    section: string;
+    topChoices: Array<{
+      choice: string;
+      count: number;
+      percentage: string;
+    }>;
+  }>;
   metadata: {
     responseCount: number;
     generatedAt: string;
@@ -31,6 +41,26 @@ export const AISummary: React.FC<AISummaryProps> = ({ submissions, sessionId }) 
   const [loading, setLoading] = useState(false);
   const [summaryData, setSummaryData] = useState<AISummaryData | null>(null);
   const [error, setError] = useState('');
+  const [loadingExisting, setLoadingExisting] = useState(true);
+
+  // Load existing insights on mount
+  React.useEffect(() => {
+    const loadExistingInsights = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/ai-summary/${sessionId || 'null'}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSummaryData(data);
+        }
+      } catch (err) {
+        // No existing insights, that's fine
+      } finally {
+        setLoadingExisting(false);
+      }
+    };
+
+    loadExistingInsights();
+  }, [sessionId]);
 
   const generateSummary = async () => {
     setLoading(true);
@@ -57,6 +87,14 @@ export const AISummary: React.FC<AISummaryProps> = ({ submissions, sessionId }) 
     }
   };
 
+  if (loadingExisting) {
+    return (
+      <Tile style={{ padding: '2rem', textAlign: 'center' }}>
+        <SkeletonText paragraph lineCount={3} />
+      </Tile>
+    );
+  }
+
   return (
     <div style={{ marginBottom: '3rem' }}>
       {!summaryData ? (
@@ -68,7 +106,7 @@ export const AISummary: React.FC<AISummaryProps> = ({ submissions, sessionId }) 
             AI Insights
           </Heading>
           <p style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '1.5rem' }}>
-            Get a brief AI analysis of the key pain points and priorities.
+            Get an AI-powered summary of survey results and key findings.
           </p>
           {error && (
             <p style={{ color: '#ff6b6b', fontSize: '0.875rem', marginBottom: '1rem' }}>
@@ -100,7 +138,7 @@ export const AISummary: React.FC<AISummaryProps> = ({ submissions, sessionId }) 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Ai size={24} />
               <Heading style={{ fontSize: '1.25rem', margin: 0 }}>
-                AI Analysis
+                AI Insights
               </Heading>
             </div>
             <Button
@@ -130,9 +168,14 @@ export const AISummary: React.FC<AISummaryProps> = ({ submissions, sessionId }) 
               </Tile>
 
               <Tile style={{ padding: '1.5rem' }}>
-                <Heading style={{ fontSize: '1rem', marginBottom: '1rem' }}>
-                  Top 5 Problems by Impact Score
-                </Heading>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <Heading style={{ fontSize: '1rem', margin: 0 }}>
+                    Top 5 Pain Points
+                  </Heading>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.6, textAlign: 'right' }}>
+                    Score = Frequency × Severity
+                  </div>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {summaryData.topProblems.map((problem, index) => (
                     <div 
@@ -151,7 +194,7 @@ export const AISummary: React.FC<AISummaryProps> = ({ submissions, sessionId }) 
                         {problem.title}
                       </div>
                       <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-                        Frequency: {problem.avgFrequency}/10 • Severity: {problem.avgSeverity}/10 • Score: {problem.score}
+                        Frequency: {problem.avgFrequency}/10 • Severity: {problem.avgSeverity}/10 • Score: {problem.score}/100
                       </div>
                     </div>
                   ))}

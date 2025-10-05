@@ -8,6 +8,8 @@ interface SliderProps {
   onChange: (value: number) => void;
   min?: number;
   max?: number;
+  step?: number;
+  hideLabels?: boolean;
 }
 
 export const Slider: React.FC<SliderProps> = ({ 
@@ -15,7 +17,9 @@ export const Slider: React.FC<SliderProps> = ({
   value, 
   onChange, 
   min = MIN_RATING, 
-  max = MAX_RATING 
+  max = MAX_RATING,
+  step = 1,
+  hideLabels = false
 }) => {
   return (
     <div>
@@ -32,23 +36,25 @@ export const Slider: React.FC<SliderProps> = ({
         labelText=""
         min={min}
         max={max}
-        step={1}
+        step={step}
         value={value}
         onChange={({ value: newValue }) => onChange(newValue)}
         formatLabel={(value) => `${value}`}
       />
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        fontSize: '0.75rem',
-        marginTop: '0.25rem',
-        opacity: 0.7,
-        maxWidth: 'calc(100% - 5rem)',
-        paddingLeft: '0.25rem'
-      }}>
-        <span>Low</span>
-        <span>High</span>
-      </div>
+      {!hideLabels && (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          fontSize: '0.75rem',
+          marginTop: '0.25rem',
+          opacity: 0.7,
+          maxWidth: 'calc(100% - 5rem)',
+          paddingLeft: '0.25rem'
+        }}>
+          <span>Low</span>
+          <span>High</span>
+        </div>
+      )}
     </div>
   );
 };

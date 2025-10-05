@@ -31,18 +31,22 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
     setExpandedRows(newExpanded);
   };
 
-  // Calculate aggregates
+  // Calculate aggregates (no longer used, but kept for backward compatibility)
   const aggregates = useMemo(() => {
     if (submissions.length === 0) return null;
 
     const totalResponses = submissions.length;
     const avgFrequency = submissions.reduce((sum, sub) => {
-      const avg = sub.responses.reduce((s, r) => s + r.frequency, 0) / sub.responses.length;
+      const validResponses = sub.responses.filter(r => r.frequency !== undefined);
+      if (validResponses.length === 0) return sum;
+      const avg = validResponses.reduce((s, r) => s + (r.frequency || 0), 0) / validResponses.length;
       return sum + avg;
     }, 0) / totalResponses;
 
     const avgSeverity = submissions.reduce((sum, sub) => {
-      const avg = sub.responses.reduce((s, r) => s + r.severity, 0) / sub.responses.length;
+      const validResponses = sub.responses.filter(r => r.severity !== undefined);
+      if (validResponses.length === 0) return sum;
+      const avg = validResponses.reduce((s, r) => s + (r.severity || 0), 0) / validResponses.length;
       return sum + avg;
     }, 0) / totalResponses;
 
@@ -58,59 +62,6 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
 
   return (
     <div>
-      {/* Aggregate Summary */}
-      {aggregates && (
-        <div style={{ 
-          marginBottom: '2rem',
-          padding: '1.5rem',
-          backgroundColor: '#262626',
-          border: '1px solid #393939',
-          borderRadius: '4px'
-        }}>
-          <Heading style={{ fontSize: '1rem', marginBottom: '1rem' }}>
-            Summary Statistics
-          </Heading>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1.5rem'
-          }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', opacity: 0.7, marginBottom: '0.25rem' }}>
-                Total Responses
-              </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: '600' }}>
-                {aggregates.totalResponses}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', opacity: 0.7, marginBottom: '0.25rem' }}>
-                Avg Frequency
-              </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: '600' }}>
-                {aggregates.avgFrequency}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', opacity: 0.7, marginBottom: '0.25rem' }}>
-                Avg Severity
-              </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: '600' }}>
-                {aggregates.avgSeverity}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', opacity: 0.7, marginBottom: '0.25rem' }}>
-                With Feedback
-              </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: '600' }}>
-                {aggregates.withNotesPercent}%
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Detailed Table */}
       <div style={{ 
         backgroundColor: '#262626',
@@ -126,15 +77,11 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
               <TableHeader>Name</TableHeader>
               <TableHeader>Email</TableHeader>
               <TableHeader>Date</TableHeader>
-              <TableHeader>Avg Freq</TableHeader>
-              <TableHeader>Avg Sev</TableHeader>
               <TableHeader>Notes</TableHeader>
             </TableRow>
           </TableHead>
           <TableBody>
             {submissions.map((submission, index) => {
-              const avgFreq = (submission.responses.reduce((sum, r) => sum + r.frequency, 0) / submission.responses.length).toFixed(1);
-              const avgSev = (submission.responses.reduce((sum, r) => sum + r.severity, 0) / submission.responses.length).toFixed(1);
               const isExpanded = expandedRows.has(submission.id);
 
               return (
@@ -148,12 +95,10 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
                     <TableCell>{submission.respondentName || 'Anonymous'}</TableCell>
                     <TableCell>{submission.respondentEmail || '-'}</TableCell>
                     <TableCell>{new Date(submission.timestamp).toLocaleDateString()}</TableCell>
-                    <TableCell>{avgFreq}</TableCell>
-                    <TableCell>{avgSev}</TableCell>
                     <TableCell>{submission.notes ? '✓' : '-'}</TableCell>
                   </TableExpandRow>
                   {isExpanded && (
-                    <TableExpandedRow colSpan={8}>
+                    <TableExpandedRow colSpan={6}>
                       <div style={{ padding: '1.5rem', backgroundColor: '#1c1c1c' }}>
                         <Heading style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>
                           Question-by-Question Breakdown
@@ -162,21 +107,44 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
                           <Table size="sm">
                             <TableHead>
                               <TableRow>
-                                <TableHeader>Problem #</TableHeader>
+                                <TableHeader>Question #</TableHeader>
                                 <TableHeader>Question</TableHeader>
-                                <TableHeader>Frequency</TableHeader>
-                                <TableHeader>Severity</TableHeader>
+                                <TableHeader>Response</TableHeader>
                               </TableRow>
                             </TableHead>
                             <TableBody>
                               {submission.responses.map((response, idx) => {
                                 const problem = problems.find(p => p.id === response.problemId);
+                                
+                                // Format response based on question type
+                                let responseText = '';
+                                if (response.textResponse) {
+                                  // Single/multiple choice questions
+                                  // Replace ||| separator with comma for display
+                                  responseText = response.textResponse.replace(/\|\|\|/g, ', ');
+                                } else if (problem?.questionType === 'slider-labeled') {
+                                  // Slider-labeled uses frequency field to store position (1-5)
+                                  const sliderLabels = [
+                                    'Entirely CLI / Automated',
+                                    'Mostly CLI',
+                                    'Balanced',
+                                    'Mostly GUI',
+                                    'Entirely GUI'
+                                  ];
+                                  const position = response.frequency || 3;
+                                  responseText = sliderLabels[position - 1] || `Position ${position}`;
+                                } else if (response.frequency !== undefined && response.severity !== undefined) {
+                                  // Regular slider questions
+                                  responseText = `Freq: ${response.frequency}, Sev: ${response.severity}`;
+                                } else {
+                                  responseText = '-';
+                                }
+                                
                                 return (
                                   <TableRow key={`${submission.id}-${response.problemId}-${idx}`}>
                                     <TableCell>{response.problemId}</TableCell>
                                     <TableCell>{problem?.title || 'Unknown'}</TableCell>
-                                    <TableCell>{response.frequency}</TableCell>
-                                    <TableCell>{response.severity}</TableCell>
+                                    <TableCell>{responseText}</TableCell>
                                   </TableRow>
                                 );
                               })}

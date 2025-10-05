@@ -217,9 +217,15 @@ app.post('/api/submissions', async (req, res) => {
     // Insert responses
     for (const response of submission.responses) {
       await executeQuery(`
-        INSERT INTO SURVEYS.RESPONSES (SUBMISSION_ID, PROBLEM_ID, FREQUENCY, SEVERITY)
-        VALUES (?, ?, ?, ?)
-      `, [submission.id, response.problemId, response.frequency, response.severity]);
+        INSERT INTO SURVEYS.RESPONSES (SUBMISSION_ID, PROBLEM_ID, FREQUENCY, SEVERITY, TEXT_RESPONSE)
+        VALUES (?, ?, ?, ?, ?)
+      `, [
+        submission.id, 
+        response.problemId, 
+        response.frequency || null, 
+        response.severity || null,
+        response.textResponse || null
+      ]);
     }
     
     // Update session response count
@@ -256,7 +262,7 @@ app.get('/api/submissions', async (req, res) => {
     const result = [];
     for (const sub of submissions) {
       const responses = await executeQuery(
-        'SELECT PROBLEM_ID, FREQUENCY, SEVERITY FROM SURVEYS.RESPONSES WHERE SUBMISSION_ID = ?',
+        'SELECT PROBLEM_ID, FREQUENCY, SEVERITY, TEXT_RESPONSE FROM SURVEYS.RESPONSES WHERE SUBMISSION_ID = ?',
         [sub.ID]
       );
       
@@ -270,7 +276,8 @@ app.get('/api/submissions', async (req, res) => {
         responses: responses.map(r => ({
           problemId: r.PROBLEM_ID,
           frequency: r.FREQUENCY,
-          severity: r.SEVERITY
+          severity: r.SEVERITY,
+          textResponse: r.TEXT_RESPONSE
         }))
       });
     }
@@ -293,7 +300,7 @@ app.get('/api/sessions/:id/submissions', async (req, res) => {
     const result = [];
     for (const sub of submissions) {
       const responses = await executeQuery(
-        'SELECT PROBLEM_ID, FREQUENCY, SEVERITY FROM SURVEYS.RESPONSES WHERE SUBMISSION_ID = ?',
+        'SELECT PROBLEM_ID, FREQUENCY, SEVERITY, TEXT_RESPONSE FROM SURVEYS.RESPONSES WHERE SUBMISSION_ID = ?',
         [sub.ID]
       );
       
@@ -307,7 +314,8 @@ app.get('/api/sessions/:id/submissions', async (req, res) => {
         responses: responses.map(r => ({
           problemId: r.PROBLEM_ID,
           frequency: r.FREQUENCY,
-          severity: r.SEVERITY
+          severity: r.SEVERITY,
+          textResponse: r.TEXT_RESPONSE
         }))
       });
     }
@@ -359,7 +367,9 @@ app.get('/api/config', async (req, res) => {
         color: section.COLOR,
         problems: problems.map(p => ({
           id: p.ID,
-          title: p.TITLE
+          title: p.TITLE,
+          questionType: p.QUESTION_TYPE || 'slider',
+          options: p.OPTIONS ? JSON.parse(p.OPTIONS) : undefined
         }))
       });
     }
@@ -474,6 +484,8 @@ app.get('/api/config/sections/:id/problems', async (req, res) => {
     res.json(problems.map(p => ({
       id: p.ID,
       title: p.TITLE,
+      questionType: p.QUESTION_TYPE || 'slider',
+      options: p.OPTIONS ? JSON.parse(p.OPTIONS) : undefined,
       displayOrder: p.DISPLAY_ORDER
     })));
   } catch (error) {
@@ -538,6 +550,43 @@ app.delete('/api/config/problems/:id', async (req, res) => {
 // ============================================================================
 
 // Generate AI summary for session or all results
+// Get existing AI insights
+app.get('/api/ai-summary/:sessionId?', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    let query = 'SELECT * FROM SURVEYS.AI_INSIGHTS';
+    let params = [];
+    
+    if (sessionId && sessionId !== 'null') {
+      query += ' WHERE SESSION_ID = ? ORDER BY GENERATED_AT DESC FETCH FIRST 1 ROWS ONLY';
+      params = [sessionId];
+    } else {
+      query += ' WHERE SESSION_ID IS NULL ORDER BY GENERATED_AT DESC FETCH FIRST 1 ROWS ONLY';
+    }
+    
+    const insights = await executeQuery(query, params);
+    
+    if (insights.length === 0) {
+      return res.status(404).json({ error: 'No insights found' });
+    }
+    
+    const insight = insights[0];
+    res.json({
+      summary: insight.SUMMARY,
+      topProblems: JSON.parse(insight.TOP_PROBLEMS),
+      choiceAnalysis: insight.CHOICE_ANALYSIS ? JSON.parse(insight.CHOICE_ANALYSIS) : undefined,
+      metadata: {
+        responseCount: insight.RESPONSE_COUNT,
+        generatedAt: insight.GENERATED_AT
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching AI insights:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/ai-summary', async (req, res) => {
   try {
     const { sessionId, submissions } = req.body;
@@ -554,70 +603,154 @@ app.post('/api/ai-summary', async (req, res) => {
       topConcerns: []
     };
 
-    // Calculate averages per problem
+    // Calculate averages per problem (slider questions only)
     const problemStats = {};
     submissions.forEach(sub => {
       sub.responses.forEach(resp => {
-        if (!problemStats[resp.problemId]) {
-          problemStats[resp.problemId] = { frequencies: [], severities: [] };
+        if (resp.frequency !== null && resp.frequency !== undefined) {
+          if (!problemStats[resp.problemId]) {
+            problemStats[resp.problemId] = { frequencies: [], severities: [] };
+          }
+          problemStats[resp.problemId].frequencies.push(resp.frequency);
+          problemStats[resp.problemId].severities.push(resp.severity || 0);
         }
-        problemStats[resp.problemId].frequencies.push(resp.frequency);
-        problemStats[resp.problemId].severities.push(resp.severity);
       });
     });
 
-    // Get problem titles from config
+    // Get problem titles and types from config
     const configData = await executeQuery('SELECT * FROM SURVEYS.CONFIG WHERE IS_ACTIVE = 1 ORDER BY CREATED_AT DESC FETCH FIRST 1 ROWS ONLY');
     const sections = await executeQuery('SELECT * FROM SURVEYS.SECTIONS WHERE CONFIG_ID = ? ORDER BY DISPLAY_ORDER', [configData[0].ID]);
     
-    const problemTitles = {};
+    const problemData = {};
     for (const section of sections) {
       const problems = await executeQuery('SELECT * FROM SURVEYS.PROBLEMS WHERE SECTION_ID = ? ORDER BY DISPLAY_ORDER', [section.ID]);
       problems.forEach(p => {
-        problemTitles[p.ID] = { title: p.TITLE, section: section.NAME };
+        problemData[p.ID] = { 
+          title: p.TITLE, 
+          section: section.NAME,
+          questionType: p.QUESTION_TYPE || 'slider',
+          options: p.OPTIONS ? JSON.parse(p.OPTIONS) : null
+        };
       });
     }
 
-    // Build analysis data
+    // Build analysis data for slider questions
     const analysisData = Object.entries(problemStats).map(([id, stats]) => {
       const avgFreq = stats.frequencies.reduce((a, b) => a + b, 0) / stats.frequencies.length;
       const avgSev = stats.severities.reduce((a, b) => a + b, 0) / stats.severities.length;
       return {
         id,
-        title: problemTitles[id]?.title || 'Unknown',
-        section: problemTitles[id]?.section || 'Unknown',
+        title: problemData[id]?.title || 'Unknown',
+        section: problemData[id]?.section || 'Unknown',
         avgFrequency: avgFreq.toFixed(1),
         avgSeverity: avgSev.toFixed(1),
         score: (avgFreq * avgSev).toFixed(1)
       };
     }).sort((a, b) => parseFloat(b.score) - parseFloat(a.score));
 
+    // Analyze choice-based questions
+    const choiceAnalysis = {};
+    submissions.forEach(sub => {
+      sub.responses.forEach(resp => {
+        const problem = problemData[resp.problemId];
+        if (problem && resp.textResponse) {
+          if (!choiceAnalysis[resp.problemId]) {
+            choiceAnalysis[resp.problemId] = {
+              title: problem.title,
+              section: problem.section,
+              questionType: problem.questionType,
+              responses: {}
+            };
+          }
+          
+          if (problem.questionType === 'multiple-choice') {
+            const selections = resp.textResponse.split('|||').filter(s => s.trim());
+            selections.forEach(sel => {
+              choiceAnalysis[resp.problemId].responses[sel] = (choiceAnalysis[resp.problemId].responses[sel] || 0) + 1;
+            });
+          } else {
+            choiceAnalysis[resp.problemId].responses[resp.textResponse] = (choiceAnalysis[resp.problemId].responses[resp.textResponse] || 0) + 1;
+          }
+        }
+      });
+    });
+
+    // Format choice analysis for AI
+    const choiceInsights = Object.entries(choiceAnalysis).map(([id, data]) => {
+      const topChoices = Object.entries(data.responses)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([choice, count]) => `${choice} (${count})`);
+      return `${data.title}: ${topChoices.join(', ')}`;
+    }).join('\n');
+
     // Generate AI summary
-    const prompt = `Analyze these IBM Db2 survey results:
+    const prompt = `Analyze these IBM Db2 customer survey results and provide a brief summary.
 
-Responses: ${submissions.length}
+Survey Data:
+- Total Responses: ${submissions.length}
 
-Top problems (Frequency × Severity):
-${analysisData.slice(0, 5).map((p, i) => `${i + 1}. ${p.title} - Freq: ${p.avgFrequency}/10, Sev: ${p.avgSeverity}/10`).join('\n')}
+TOP PAIN POINTS (Frequency × Severity):
+${analysisData.slice(0, 5).map((p, i) => `${i + 1}. ${p.title} (${p.section}) - Score: ${p.score}/100 (Freq: ${p.avgFrequency}/10, Sev: ${p.avgSeverity}/10)`).join('\n')}
 
-Provide a brief 2-3 sentence analysis of the main pain points and what they indicate about customer needs.`;
+CUSTOMER PREFERENCES:
+${choiceInsights}
+
+Provide a concise 3-4 sentence summary highlighting:
+- The main patterns in the pain points
+- What the deployment and workflow preferences tell us about the customer base
+- Any notable trends or insights
+
+Keep it factual and data-driven.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are a database consultant. Provide concise, actionable insights." },
+        { role: "system", content: "You are a data analyst summarizing survey results. Be concise and focus on key patterns and insights from the data." },
         { role: "user", content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 200
+      max_tokens: 250
     });
 
+    const topProblems = analysisData.slice(0, 5);
+    const choiceAnalysisArray = Object.entries(choiceAnalysis).map(([id, data]) => ({
+      id,
+      title: data.title,
+      section: data.section,
+      topChoices: Object.entries(data.responses)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([choice, count]) => ({ choice, count, percentage: ((count / submissions.length) * 100).toFixed(1) }))
+    }));
+    
+    const summaryText = completion.choices[0].message.content;
+    const generatedAt = new Date().toISOString();
+    
+    // Save to database
+    const insightId = `insight-${Date.now()}`;
+    const timestamp = generatedAt.replace('T', ' ').substring(0, 19);
+    
+    await executeQuery(`
+      INSERT INTO SURVEYS.AI_INSIGHTS (ID, SESSION_ID, SUMMARY, TOP_PROBLEMS, CHOICE_ANALYSIS, RESPONSE_COUNT, GENERATED_AT)
+      VALUES (?, ?, ?, ?, ?, ?, CAST(? AS TIMESTAMP))
+    `, [
+      insightId,
+      sessionId || null,
+      summaryText,
+      JSON.stringify(topProblems),
+      JSON.stringify(choiceAnalysisArray),
+      submissions.length,
+      timestamp
+    ]);
+
     res.json({
-      summary: completion.choices[0].message.content,
-      topProblems: analysisData.slice(0, 5),
+      summary: summaryText,
+      topProblems,
+      choiceAnalysis: choiceAnalysisArray,
       metadata: {
         responseCount: submissions.length,
-        generatedAt: new Date().toISOString()
+        generatedAt
       }
     });
 
