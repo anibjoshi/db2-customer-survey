@@ -243,10 +243,15 @@ app.post('/api/submissions', async (req, res) => {
   }
 });
 
-// Get all submissions
+// Get all submissions (exclude submissions from deleted sessions)
 app.get('/api/submissions', async (req, res) => {
   try {
-    const submissions = await executeQuery('SELECT * FROM SURVEYS.SUBMISSIONS ORDER BY TIMESTAMP DESC');
+    const submissions = await executeQuery(`
+      SELECT s.* FROM SURVEYS.SUBMISSIONS s
+      LEFT JOIN SURVEYS.SESSIONS sess ON s.SESSION_ID = sess.ID
+      WHERE sess.IS_DELETED = 0 OR s.SESSION_ID IS NULL
+      ORDER BY s.TIMESTAMP DESC
+    `);
     
     const result = [];
     for (const sub of submissions) {
