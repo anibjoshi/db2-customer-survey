@@ -22,7 +22,7 @@ export const Slider: React.FC<SliderProps> = ({
   hideLabels = false
 }) => {
   return (
-    <div>
+    <div className="custom-slider-wrapper">
       <div style={{ marginBottom: '0.5rem' }}>
         <label style={{ 
           fontSize: '0.875rem', 
@@ -41,20 +41,6 @@ export const Slider: React.FC<SliderProps> = ({
         onChange={({ value: newValue }) => onChange(newValue)}
         formatLabel={(value) => `${value}`}
       />
-      {!hideLabels && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          fontSize: '0.75rem',
-          marginTop: '0.25rem',
-          opacity: 0.7,
-          maxWidth: 'calc(100% - 5rem)',
-          paddingLeft: '0.25rem'
-        }}>
-          <span>Low</span>
-          <span>High</span>
-        </div>
-      )}
     </div>
   );
 };

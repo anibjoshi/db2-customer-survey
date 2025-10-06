@@ -122,15 +122,6 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, response, onU
           }}
         />
         <div style={{ flex: 1 }}>
-          <div style={{ 
-            fontSize: '0.75rem', 
-            fontWeight: '500', 
-            marginBottom: '0.5rem',
-            opacity: 0.7,
-            letterSpacing: '0.32px'
-          }}>
-            Question #{problem.id}
-          </div>
           <h3 style={{ 
             fontSize: '1rem', 
             fontWeight: '600', 

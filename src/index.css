@@ -1,2 +1,229 @@
 @import '@carbon/styles/css/styles.css';
 @import "@carbon/charts/styles.css";
+
+/* Mobile-first responsive design */
+* {
+  box-sizing: border-box;
+}
+
+/* Base mobile styles */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure full background coverage */
+#root,
+.cds--content,
+.bx--content {
+  min-height: 100vh;
+  background-color: #171717 !important;
+}
+
+/* Make tables responsive */
+.cds--data-table-container,
+.bx--data-table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Responsive padding for mobile */
+@media (max-width: 672px) {
+  /* Fix container widths to prevent overflow */
+  .cds--content,
+  .bx--content,
+  main {
+    max-width: 100vw;
+    overflow-x: hidden;
+    padding: 1rem !important;
+  }
+  
+  /* Ensure all containers respect viewport width */
+  div[style*="padding: 0 2rem"],
+  div[style*="padding:0 2rem"] {
+    padding: 0 1rem !important;
+  }
+  
+  div[style*="maxWidth"],
+  div[style*="max-width"] {
+    max-width: 100% !important;
+  }
+  
+  .cds--tile,
+  .bx--tile {
+    padding: 1.25rem !important;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 1.25rem !important;
+  }
+  
+  /* More breathing room for mobile */
+  div[style*="gap: '1.5rem'"],
+  div[style*="gap: 1.5rem"] {
+    gap: 1.75rem !important;
+  }
+  
+  /* Stack buttons vertically on mobile */
+  .cds--btn-set,
+  .bx--btn-set {
+    flex-direction: column !important;
+    width: 100%;
+  }
+  
+  .cds--btn,
+  .bx--btn {
+    width: 100%;
+    max-width: none !important;
+    min-height: 48px !important; /* Touch-friendly size */
+  }
+  
+  /* Make inputs full width */
+  .cds--text-input,
+  .bx--text-input,
+  .cds--text-area,
+  .bx--text-area {
+    width: 100% !important;
+  }
+  
+  /* Reduce heading sizes on mobile */
+  h1, .cds--heading-01 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2, .cds--heading-02 {
+    font-size: 1.25rem !important;
+  }
+  
+  h3, .cds--heading-03 {
+    font-size: 1.125rem !important;
+  }
+  
+  /* Make tables scrollable horizontally */
+  .cds--data-table,
+  .bx--data-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  /* Responsive grid */
+  .cds--grid,
+  .bx--grid {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Stack form items vertically */
+  .cds--form-item,
+  .bx--form-item {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Mobile-friendly modals */
+  .cds--modal-container,
+  .bx--modal-container {
+    max-width: 95vw !important;
+    margin: 1rem !important;
+  }
+  
+  /* Reduce chart heights on mobile */
+  canvas {
+    max-height: 300px !important;
+  }
+  
+  /* Mobile-specific layout fixes */
+  
+  /* Stack dual sliders (frequency/severity) vertically on mobile */
+  .cds--tile > div[style*="grid-template-columns"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+  }
+  
+  /* Make scatter plots responsive */
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Better spacing for problem cards */
+  .cds--tile,
+  .bx--tile {
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Improve radio button and checkbox spacing */
+  .cds--radio-button-group,
+  .bx--radio-button-group {
+    gap: 0.75rem;
+  }
+  
+  /* Fix navigation buttons layout */
+  div[style*="justify-content: space-between"] {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    width: 100% !important;
+    align-items: stretch !important;
+  }
+  
+  div[style*="justify-content: space-between"] > .cds--btn,
+  div[style*="justify-content: space-between"] > .bx--btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  /* Fix section headers */
+  section {
+    padding: 1rem !important;
+  }
+  
+  /* Improve inline notifications on mobile */
+  .cds--inline-notification,
+  .bx--inline-notification {
+    max-width: 100%;
+  }
+  
+  /* Better table display on mobile */
+  .cds--data-table-container,
+  .bx--data-table-container {
+    margin: 0 -1rem;
+    width: calc(100% + 2rem);
+  }
+  
+  /* Fix overflow for long text in options */
+  .cds--radio-button__label,
+  .bx--radio-button__label,
+  .cds--checkbox-label,
+  .bx--checkbox-label {
+    white-space: normal !important;
+    word-wrap: break-word;
+    max-width: 100%;
+  }
+  
+  /* Improve button group spacing */
+  div[style*="display: flex"][style*="gap"] {
+    flex-wrap: wrap;
+  }
+}
+
+/* Tablet styles (672px - 1056px) */
+@media (min-width: 672px) and (max-width: 1056px) {
+  main {
+    padding: 2rem !important;
+  }
+  
+  .cds--tile,
+  .bx--tile {
+    padding: 1.5rem !important;
+  }
+  
+  /* Keep dual sliders side-by-side on tablets */
+  .cds--tile > div[style*="grid-template-columns"] {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.5rem !important;
+  }
+}

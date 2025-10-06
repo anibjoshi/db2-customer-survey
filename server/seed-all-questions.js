@@ -28,6 +28,16 @@ const executeQuery = (conn, sql, params = []) => {
   });
 };
 
+// Helper function to clean and validate JSON strings
+const cleanJsonString = (data) => {
+  const jsonStr = JSON.stringify(data);
+  // Remove any control characters that might have snuck in
+  const cleaned = jsonStr.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+  // Verify it's still valid JSON
+  JSON.parse(cleaned);
+  return cleaned;
+};
+
 async function seedAllQuestions() {
   let conn;
   
@@ -96,7 +106,7 @@ async function seedAllQuestions() {
     nextSectionOrder++;
     
     // AI Deployment Q1
-    const deploymentOptions = JSON.stringify([
+    const deploymentOptions = cleanJsonString([
       'Fully on-prem (including air-gapped or isolated environments)',
       'On-prem with limited outbound connectivity (e.g., for updates or telemetry)',
       'Hybrid (some components on-prem, others cloud-connected)',
@@ -119,7 +129,7 @@ async function seedAllQuestions() {
     nextProblemId++;
     
     // AI Deployment Q2
-    const cloudStrategyOptions = JSON.stringify([
+    const cloudStrategyOptions = cleanJsonString([
       'AWS',
       'Azure',
       'Google Cloud',
@@ -154,7 +164,7 @@ async function seedAllQuestions() {
     nextSectionOrder++;
     
     // Workflows Q1 - Slider with 5 options
-    const workStyleOptions = JSON.stringify([
+    const workStyleOptions = cleanJsonString([
       'Entirely CLI / Automated - Almost everything I do is through command line or scripts.',
       'Mostly CLI - I use GUI tools occasionally, but most work happens in CLI or automation.',
       'Balanced - Roughly equal mix of GUI and CLI.',
@@ -177,7 +187,7 @@ async function seedAllQuestions() {
     nextProblemId++;
     
     // Workflows Q2
-    const cliUsefulnessOptions = JSON.stringify([
+    const cliUsefulnessOptions = cleanJsonString([
       'Extremely useful — would likely use it often',
       'Somewhat useful — for certain scenarios',
       'Neutral — nice to have, not essential',

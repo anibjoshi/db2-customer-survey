@@ -365,12 +365,24 @@ app.get('/api/config', async (req, res) => {
         id: section.ID,
         name: section.NAME,
         color: section.COLOR,
-        problems: problems.map(p => ({
-          id: p.ID,
-          title: p.TITLE,
-          questionType: p.QUESTION_TYPE || 'slider',
-          options: p.OPTIONS ? JSON.parse(p.OPTIONS) : undefined
-        }))
+        problems: problems.map(p => {
+          let options = undefined;
+          if (p.OPTIONS) {
+            try {
+              options = JSON.parse(p.OPTIONS);
+            } catch (err) {
+              console.error(`Error parsing OPTIONS for problem ${p.ID} (${p.TITLE}):`, err);
+              console.error('OPTIONS value:', p.OPTIONS);
+              options = undefined;
+            }
+          }
+          return {
+            id: p.ID,
+            title: p.TITLE,
+            questionType: p.QUESTION_TYPE || 'slider',
+            options
+          };
+        })
       });
     }
     
@@ -481,13 +493,24 @@ app.get('/api/config/sections/:id/problems', async (req, res) => {
       [req.params.id]
     );
     
-    res.json(problems.map(p => ({
-      id: p.ID,
-      title: p.TITLE,
-      questionType: p.QUESTION_TYPE || 'slider',
-      options: p.OPTIONS ? JSON.parse(p.OPTIONS) : undefined,
-      displayOrder: p.DISPLAY_ORDER
-    })));
+    res.json(problems.map(p => {
+      let options = undefined;
+      if (p.OPTIONS) {
+        try {
+          options = JSON.parse(p.OPTIONS);
+        } catch (err) {
+          console.error(`Error parsing OPTIONS for problem ${p.ID}:`, err);
+          options = undefined;
+        }
+      }
+      return {
+        id: p.ID,
+        title: p.TITLE,
+        questionType: p.QUESTION_TYPE || 'slider',
+        options,
+        displayOrder: p.DISPLAY_ORDER
+      };
+    }));
   } catch (error) {
     console.error('Error fetching problems:', error);
     res.status(500).json({ error: error.message });
@@ -625,11 +648,20 @@ app.post('/api/ai-summary', async (req, res) => {
     for (const section of sections) {
       const problems = await executeQuery('SELECT * FROM SURVEYS.PROBLEMS WHERE SECTION_ID = ? ORDER BY DISPLAY_ORDER', [section.ID]);
       problems.forEach(p => {
+        let options = null;
+        if (p.OPTIONS) {
+          try {
+            options = JSON.parse(p.OPTIONS);
+          } catch (err) {
+            console.error(`Error parsing OPTIONS for problem ${p.ID} in AI summary:`, err);
+            options = null;
+          }
+        }
         problemData[p.ID] = { 
           title: p.TITLE, 
           section: section.NAME,
           questionType: p.QUESTION_TYPE || 'slider',
-          options: p.OPTIONS ? JSON.parse(p.OPTIONS) : null
+          options
         };
       });
     }

@@ -75,45 +75,70 @@ export const ResponsesTable: React.FC<ResponsesTableProps> = ({ submissions, pro
                           Question-by-Question Breakdown
                         </Heading>
                         <div style={{ marginBottom: '1rem' }}>
-                          <Table size="sm">
-                            <TableHead>
-                              <TableRow>
-                                <TableHeader>Question #</TableHeader>
-                                <TableHeader>Question</TableHeader>
-                                <TableHeader>Response</TableHeader>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {submission.responses.map((response, idx) => {
-                                const problem = problems.find(p => p.id === response.problemId);
-                                
-                                // Format response based on question type
-                                let responseText = '';
-                                if (response.textResponse) {
-                                  // Single/multiple choice questions
-                                  // Replace ||| separator with comma for display
-                                  responseText = response.textResponse.replace(/\|\|\|/g, ', ');
-                                } else if (problem?.questionType === 'slider-labeled') {
-                                  // Slider-labeled uses frequency field to store position (1-5)
-                                  const position = response.frequency || 3;
-                                  responseText = problem.options?.[position - 1] || `Position ${position}`;
-                                } else if (response.frequency !== undefined && response.severity !== undefined) {
-                                  // Regular slider questions
-                                  responseText = `Freq: ${response.frequency}, Sev: ${response.severity}`;
-                                } else {
-                                  responseText = '-';
+                          {/* Group responses by section */}
+                          {(() => {
+                            // Create a map of section -> problems
+                            const sectionMap = new Map<string, { problem: Problem; response: any }[]>();
+                            
+                            submission.responses.forEach((response) => {
+                              const problem = problems.find(p => p.id === response.problemId);
+                              if (problem) {
+                                const section = problem.group;
+                                if (!sectionMap.has(section)) {
+                                  sectionMap.set(section, []);
                                 }
-                                
-                                return (
-                                  <TableRow key={`${submission.id}-${response.problemId}-${idx}`}>
-                                    <TableCell>{response.problemId}</TableCell>
-                                    <TableCell>{problem?.title || 'Unknown'}</TableCell>
-                                    <TableCell>{responseText}</TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
+                                sectionMap.get(section)!.push({ problem, response });
+                              }
+                            });
+
+                            return Array.from(sectionMap.entries()).map(([section, items]) => (
+                              <div key={section} style={{ marginBottom: '1.5rem' }}>
+                                <div style={{ 
+                                  fontSize: '0.875rem', 
+                                  fontWeight: '600', 
+                                  marginBottom: '0.75rem',
+                                  color: '#8d8d8d'
+                                }}>
+                                  {section}
+                                </div>
+                                <Table size="sm">
+                                  <TableHead>
+                                    <TableRow>
+                                      <TableHeader>Question</TableHeader>
+                                      <TableHeader>Response</TableHeader>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {items.map(({ problem, response }, idx) => {
+                                      // Format response based on question type
+                                      let responseText = '';
+                                      if (response.textResponse) {
+                                        // Single/multiple choice questions
+                                        // Replace ||| separator with comma for display
+                                        responseText = response.textResponse.replace(/\|\|\|/g, ', ');
+                                      } else if (problem?.questionType === 'slider-labeled') {
+                                        // Slider-labeled uses frequency field to store position (1-5)
+                                        const position = response.frequency || 3;
+                                        responseText = problem.options?.[position - 1] || `Position ${position}`;
+                                      } else if (response.frequency !== undefined && response.severity !== undefined) {
+                                        // Regular slider questions
+                                        responseText = `Freq: ${response.frequency}, Sev: ${response.severity}`;
+                                      } else {
+                                        responseText = '-';
+                                      }
+                                      
+                                      return (
+                                        <TableRow key={`${submission.id}-${response.problemId}-${idx}`}>
+                                          <TableCell>{problem?.title || 'Unknown'}</TableCell>
+                                          <TableCell>{responseText}</TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            ));
+                          })()}
                         </div>
                         {submission.notes && (
                           <div>

@@ -85,7 +85,70 @@
           "title": "Support tickets and diagnostic data collection are tedious"
         }
       ]
+    },
+    {
+      "id": "ai-deployment",
+      "name": "AI Deployment",
+      "color": "#ec4899",
+      "problems": [
+        {
+          "id": 16,
+          "title": "Which of the following best describes how your organization prefers to deploy database management and AI tools?",
+          "questionType": "single-choice",
+          "options": [
+            "Fully on-prem (including air-gapped or isolated environments)",
+            "On-prem with limited outbound connectivity (e.g., for updates or telemetry)",
+            "Hybrid (some components on-prem, others cloud-connected)",
+            "Fully cloud-hosted",
+            "Not sure"
+          ]
+        },
+        {
+          "id": 17,
+          "title": "Which best describes your organization's current or planned infrastructure strategy for AI and data workloads?",
+          "questionType": "multiple-choice",
+          "options": [
+            "AWS",
+            "Azure",
+            "Google Cloud",
+            "IBM Cloud",
+            "Private or sovereign cloud managed internally",
+            "Building or planning an internal AI data center (private LLM / GPU cluster)",
+            "No defined cloud strategy (mostly on-prem)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "db2-workflows",
+      "name": "Db2 Workflows and Interfaces",
+      "color": "#06b6d4",
+      "problems": [
+        {
+          "id": 18,
+          "title": "Which best describes your typical way of working with Db2?",
+          "questionType": "slider-labeled",
+          "options": [
+            "Entirely CLI / Automated - Almost everything I do is through command line or scripts.",
+            "Mostly CLI - I use GUI tools occasionally, but most work happens in CLI or automation.",
+            "Balanced - Roughly equal mix of GUI and CLI.",
+            "Mostly GUI - I use GUI tools for most work but switch to CLI for a few tasks.",
+            "Entirely GUI - I rely almost entirely on graphical tools."
+          ]
+        },
+        {
+          "id": 19,
+          "title": "How useful would a CLI interface for AI Agents be — for example, to run /ai analyze lockwaits or embed AI workflows in scripts?",
+          "questionType": "single-choice",
+          "options": [
+            "Extremely useful — would likely use it often",
+            "Somewhat useful — for certain scenarios",
+            "Neutral — nice to have, not essential",
+            "Not useful — prefer GUI or automated workflows",
+            "Not sure"
+          ]
+        }
+      ]
     }
   ]
 }
-

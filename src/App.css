@@ -16,15 +16,63 @@
   background-color: #262626 !important;
 }
 
-/* Fix slider width */
-.cds--slider .cds--form-item {
-  max-width: 100% !important;
-  width: 100% !important;
+/* Custom slider wrapper */
+.custom-slider-wrapper {
+  width: 100%;
 }
 
-.cds--slider-container {
-  max-width: 100% !important;
-  width: 100% !important;
+.custom-slider-wrapper .cds--slider-container {
+  width: 100%;
+}
+
+.custom-slider-wrapper .cds--slider {
+  width: 100%;
+}
+
+/* Fix passive event listener warning on mobile */
+.cds--slider__track,
+.cds--slider__thumb {
+  touch-action: none;
+}
+
+/* Mobile improvements */
+@media (max-width: 672px) {
+  /* Better spacing for dual sliders - stack vertically */
+  .cds--tile > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+    gap: 2rem !important;
+  }
+  
+  /* Problem card spacing */
+  .cds--tile {
+    margin-bottom: 1.25rem !important;
+  }
+  
+  /* Section headers */
+  h3 {
+    font-size: 1.25rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Better spacing for radio buttons */
+  .cds--radio-button-group {
+    gap: 0.75rem !important;
+  }
+  
+  .cds--radio-button-wrapper {
+    margin-bottom: 0.75rem !important;
+  }
+  
+  /* Better spacing for checkboxes */
+  .cds--checkbox-wrapper {
+    margin-bottom: 0.75rem !important;
+  }
+  
+  /* Ensure slider wrapper takes full width */
+  .custom-slider-wrapper {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 /* Tabs visibility */
