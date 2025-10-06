@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScatterChart } from '@carbon/charts-react';
 import { AggregatePoint } from '../types';
 import { GROUP_COLORS } from '../constants';
@@ -7,15 +7,23 @@ interface ScatterPlotProps {
   data: AggregatePoint[];
 }
 
-export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
+export const ScatterPlot: React.FC<ScatterPlotProps> = React.memo(({ data }) => {
   // Transform data for Carbon Charts
-  const chartData = data.map(point => ({
-    group: point.group,
-    key: point.id,
-    value: point.x,
-    value2: point.y,
-    title: `Problem ${point.id}: ${point.title}`
-  }));
+  // Use deterministic jitter based on title hash so points stay in same place
+  // Memoize to prevent re-computation on every render
+  const chartData = useMemo(() => data.map((point) => {
+    // Create a consistent seed from the title
+    const seed = point.title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const jitterX = ((seed % 100) / 100 - 0.5) * 0.15;
+    const jitterY = (((seed * 17) % 73) / 73 - 0.5) * 0.15; // Use different multiplier for Y
+    
+    return {
+      group: point.group,
+      key: point.title,
+      value: point.x + jitterX,
+      value2: point.y + jitterY
+    };
+  }), [data]);
 
   const options = {
     title: "Priority Matrix",
@@ -43,11 +51,13 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
       customHTML: (data: any) => {
         const point = data[0];
         return `
-          <div style="padding: 0.5rem; background-color: #262626; color: #f4f4f4; border-radius: 4px;">
-            <strong>Problem ${point.key}</strong><br/>
-            <span style="color: ${(GROUP_COLORS as any)[point.group]}">●</span> ${point.group}<br/>
-            Frequency: ${point.value}<br/>
-            Severity: ${point.value2}
+          <div style="padding: 0.75rem; background-color: #262626; color: #f4f4f4; border-radius: 4px; max-width: 300px;">
+            <strong style="font-size: 0.875rem;">${point.key}</strong><br/>
+            <span style="color: ${(GROUP_COLORS as any)[point.group]}">●</span> <span style="font-size: 0.75rem;">${point.group}</span><br/>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem;">
+              Frequency: ${point.value}<br/>
+              Severity: ${point.value2}
+            </div>
           </div>
         `;
       }
@@ -62,6 +72,9 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
     },
     legend: {
       enabled: false
+    },
+    toolbar: {
+      enabled: true
     }
   };
 
@@ -80,4 +93,4 @@ export const ScatterPlot: React.FC<ScatterPlotProps> = ({ data }) => {
       />
     </div>
   );
-};
+});

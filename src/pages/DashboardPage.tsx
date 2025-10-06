@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Button, 
   TextInput, 
@@ -11,7 +11,9 @@ import {
   TableHeader,
   TableBody,
   TableCell,
-  SkeletonText
+  SkeletonText,
+  DataTable,
+  TableContainer
 } from '@carbon/react';
 import { Add, Launch, TrashCan, Checkmark, StopFilled, View, Download } from '@carbon/icons-react';
 import { SurveySession, SurveySubmission, Problem, AggregatePoint } from '../types';
@@ -31,6 +33,22 @@ interface DashboardPageProps {
   onReloadConfig?: () => void;
 }
 
+type MainTab = 'sessions' | 'results' | 'all' | 'config';
+type SubTab = 'analysis' | 'table' | 'details';
+
+// Reusable tab button styles
+const getTabButtonStyle = (isActive: boolean, isDisabled = false) => ({
+  padding: '0.75rem 1.5rem',
+  backgroundColor: isActive ? '#0f62fe' : 'transparent',
+  color: isActive ? 'white' : '#f4f4f4',
+  border: 'none',
+  borderBottom: isActive ? '2px solid #0f62fe' : 'none',
+  cursor: isDisabled ? 'not-allowed' : 'pointer',
+  fontSize: '0.875rem',
+  fontWeight: '600',
+  opacity: isDisabled ? 0.4 : 1
+});
+
 export const DashboardPage: React.FC<DashboardPageProps> = ({ 
   problems,
   onLaunchSurvey,
@@ -43,48 +61,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedSessionSubmissions, setSelectedSessionSubmissions] = useState<SurveySubmission[]>([]);
   const [allSubmissions, setAllSubmissions] = useState<SurveySubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'sessions' | 'results' | 'all' | 'config'>('sessions');
-  const [resultsSubTab, setResultsSubTab] = useState<'analysis' | 'details'>('analysis');
-  const [allResultsSubTab, setAllResultsSubTab] = useState<'analysis' | 'details'>('analysis');
+  const [activeTab, setActiveTab] = useState<MainTab>('sessions');
+  const [resultsSubTab, setResultsSubTab] = useState<SubTab>('analysis');
+  const [allResultsSubTab, setAllResultsSubTab] = useState<SubTab>('analysis');
   const [loadingResults, setLoadingResults] = useState(false);
 
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     const sessions = await sessionManager.getAllSessions();
     setSessions(sessions);
-  };
+  }, []);
 
-  const loadAllSubmissions = async () => {
+  const loadAllSubmissions = useCallback(async () => {
     const submissions = await api.getAllSubmissions();
     setAllSubmissions(submissions);
-  };
+  }, []);
 
   useEffect(() => {
     loadSessions();
     loadAllSubmissions();
-    
-    // Poll for updates every 30 seconds to catch new responses
-    const interval = setInterval(() => {
-      if (activeTab === 'sessions') {
-        loadSessions();
-      } else if (activeTab === 'all') {
-        loadAllSubmissions();
-      } else if (activeTab === 'results' && selectedSessionId) {
-        // Reload session results when viewing them
-        handleViewSessionResults(selectedSessionId);
-      }
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, [activeTab, selectedSessionId]);
+  }, [loadSessions, loadAllSubmissions]);
 
   const handleCreateSession = async () => {
     if (!newSessionName.trim()) return;
-
-    await sessionManager.createSession(
-      newSessionName.trim(),
-      newSessionDesc.trim() || undefined
-    );
-
+    await sessionManager.createSession(newSessionName.trim(), newSessionDesc.trim() || undefined);
     await loadSessions();
     setNewSessionName('');
     setNewSessionDesc('');
@@ -112,7 +111,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       try {
         await sessionManager.deleteSession(sessionId);
         await loadSessions();
-        // Reload all submissions if we're on that tab
         if (activeTab === 'all') {
           await loadAllSubmissions();
         }
@@ -122,13 +120,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
-  const handleViewSessionResults = async (sessionId: string) => {
+  const handleViewSessionResults = useCallback(async (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setActiveTab('results');
     setLoadingResults(true);
     
     try {
-      // Load submissions for this session
       const submissions = await api.getSessionSubmissions(sessionId);
       setSelectedSessionSubmissions(submissions);
     } catch (error) {
@@ -136,16 +133,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     } finally {
       setLoadingResults(false);
     }
-  };
+  }, []);
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
 
-  // Calculate aggregates for selected session (only slider questions)
-  const sessionAggregates: AggregatePoint[] = React.useMemo(() => {
-    // Filter to only slider-type questions for the priority matrix
+  // Calculate aggregates for slider questions
+  const calculateAggregates = useCallback((submissions: SurveySubmission[]): AggregatePoint[] => {
     const sliderProblems = problems.filter(p => p.questionType === 'slider' || !p.questionType);
     
-    if (selectedSessionSubmissions.length === 0) {
+    if (submissions.length === 0) {
       return sliderProblems.map(problem => ({
         id: problem.id,
         x: DEFAULT_RATING,
@@ -156,11 +152,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
 
     return sliderProblems.map(problem => {
-      const problemResponses = selectedSessionSubmissions.flatMap(submission =>
+      const problemResponses = submissions.flatMap(submission =>
         submission.responses.filter(response => response.problemId === problem.id)
       );
 
-      // Filter out undefined values for choice-based questions
       const frequencies = problemResponses.map(r => r.frequency).filter((f): f is number => f !== undefined);
       const severities = problemResponses.map(r => r.severity).filter((s): s is number => s !== undefined);
 
@@ -172,41 +167,112 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         title: problem.title,
       };
     });
-  }, [selectedSessionSubmissions, problems]);
+  }, [problems]);
 
-  // Calculate aggregates for all submissions (only slider questions)
-  const allAggregates: AggregatePoint[] = React.useMemo(() => {
-    // Filter to only slider-type questions for the priority matrix
-    const sliderProblems = problems.filter(p => p.questionType === 'slider' || !p.questionType);
-    
-    if (allSubmissions.length === 0) {
-      return sliderProblems.map(problem => ({
-        id: problem.id,
-        x: DEFAULT_RATING,
-        y: DEFAULT_RATING,
-        group: problem.group,
-        title: problem.title,
-      }));
-    }
+  const sessionAggregates = useMemo(
+    () => calculateAggregates(selectedSessionSubmissions),
+    [selectedSessionSubmissions, calculateAggregates]
+  );
 
-    return sliderProblems.map(problem => {
-      const problemResponses = allSubmissions.flatMap(submission =>
-        submission.responses.filter(response => response.problemId === problem.id)
-      );
+  const allAggregates = useMemo(
+    () => calculateAggregates(allSubmissions),
+    [allSubmissions, calculateAggregates]
+  );
 
-      // Filter out undefined values for choice-based questions
-      const frequencies = problemResponses.map(r => r.frequency).filter((f): f is number => f !== undefined);
-      const severities = problemResponses.map(r => r.severity).filter((s): s is number => s !== undefined);
+  // Render priority matrix table with sorting
+  const renderPriorityTable = (aggregates: AggregatePoint[]) => (
+    <div>
+      <Heading style={{ marginBottom: '1.5rem' }}>
+        Priority Matrix - Table View
+      </Heading>
+      <DataTable
+        rows={aggregates.map((point, index) => ({
+          id: String(index),
+          question: point.title,
+          section: point.group,
+          frequency: point.x.toFixed(1),
+          severity: point.y.toFixed(1),
+          priorityScore: (point.x * point.y).toFixed(1)
+        }))}
+        headers={[
+          { key: 'question', header: 'Question' },
+          { key: 'section', header: 'Section' },
+          { key: 'frequency', header: 'Frequency' },
+          { key: 'severity', header: 'Severity' },
+          { key: 'priorityScore', header: 'Priority Score' }
+        ]}
+        isSortable
+      >
+        {({ rows, headers, getHeaderProps, getTableProps }) => (
+          <TableContainer style={{ 
+            backgroundColor: '#262626',
+            border: '1px solid #393939',
+            borderRadius: '4px'
+          }}>
+            <Table {...getTableProps()}>
+              <TableHead>
+                <TableRow>
+                  {headers.map((header) => (
+                    <TableHeader {...getHeaderProps({ header })} key={header.key} isSortable>
+                      {header.header}
+                    </TableHeader>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.cells.map((cell) => (
+                      <TableCell key={cell.id}>{cell.value}</TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </DataTable>
+    </div>
+  );
 
-      return {
-        id: problem.id,
-        x: frequencies.length > 0 ? calculateAverage(frequencies) : DEFAULT_RATING,
-        y: severities.length > 0 ? calculateAverage(severities) : DEFAULT_RATING,
-        group: problem.group,
-        title: problem.title,
-      };
-    });
-  }, [allSubmissions, problems]);
+  // Render sub-tabs for results sections
+  const renderSubTabs = (
+    currentSubTab: SubTab,
+    setSubTab: (tab: SubTab) => void
+  ) => (
+    <div style={{ 
+      borderBottom: '1px solid #393939',
+      marginBottom: '2rem',
+      display: 'flex',
+      gap: '0'
+    }}>
+      <button onClick={() => setSubTab('analysis')} style={getTabButtonStyle(currentSubTab === 'analysis')}>
+        Survey Analysis
+      </button>
+      <button onClick={() => setSubTab('table')} style={getTabButtonStyle(currentSubTab === 'table')}>
+        Priority Table
+      </button>
+      <button onClick={() => setSubTab('details')} style={getTabButtonStyle(currentSubTab === 'details')}>
+        Detailed Responses
+      </button>
+    </div>
+  );
+
+  // Render analysis content (priority matrix + charts)
+  const renderAnalysis = (aggregates: AggregatePoint[], submissions: SurveySubmission[]) => (
+    <>
+      <div style={{ marginBottom: '3rem' }}>
+        <Heading style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>
+          Priority Matrix
+        </Heading>
+        <div style={{ marginBottom: '1rem' }}>
+          <Legend groups={Array.from(new Set(problems.filter(p => p.questionType === 'slider' || !p.questionType).map(p => p.group)))} />
+        </div>
+        <ScatterPlot data={aggregates} />
+      </div>
+      <ChoiceResultsChart problems={problems} submissions={submissions} />
+    </>
+  );
 
   return (
     <div style={{ padding: '2rem 0', minHeight: 'calc(100vh - 48px)', maxWidth: '1400px', margin: '0 auto' }}>
@@ -220,7 +286,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </p>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Main Tab Navigation */}
         <div style={{ 
           display: 'flex', 
           gap: '1rem',
@@ -228,368 +294,184 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           marginBottom: '2rem'
         }}>
           <button
-            onClick={() => {
-              setActiveTab('sessions');
-              loadSessions(); // Refresh on tab switch
-            }}
-            style={{
-              padding: '1rem 1.5rem',
-              backgroundColor: activeTab === 'sessions' ? '#0f62fe' : 'transparent',
-              color: activeTab === 'sessions' ? 'white' : '#f4f4f4',
-              border: 'none',
-              borderBottom: activeTab === 'sessions' ? '2px solid #0f62fe' : 'none',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600'
-            }}
+            onClick={() => { setActiveTab('sessions'); loadSessions(); }}
+            style={getTabButtonStyle(activeTab === 'sessions')}
           >
             Sessions
           </button>
           <button
             onClick={() => setActiveTab('results')}
             disabled={!selectedSessionId}
-            style={{
-              padding: '1rem 1.5rem',
-              backgroundColor: activeTab === 'results' ? '#0f62fe' : 'transparent',
-              color: activeTab === 'results' ? 'white' : '#f4f4f4',
-              border: 'none',
-              borderBottom: activeTab === 'results' ? '2px solid #0f62fe' : 'none',
-              cursor: selectedSessionId ? 'pointer' : 'not-allowed',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              opacity: selectedSessionId ? 1 : 0.4
-            }}
+            style={getTabButtonStyle(activeTab === 'results', !selectedSessionId)}
           >
             Session Results {selectedSession ? `- ${selectedSession.name}` : ''}
           </button>
           <button
-            onClick={() => {
-              setActiveTab('all');
-              loadAllSubmissions();
-            }}
-            style={{
-              padding: '1rem 1.5rem',
-              backgroundColor: activeTab === 'all' ? '#0f62fe' : 'transparent',
-              color: activeTab === 'all' ? 'white' : '#f4f4f4',
-              border: 'none',
-              borderBottom: activeTab === 'all' ? '2px solid #0f62fe' : 'none',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600'
-            }}
+            onClick={() => { setActiveTab('all'); loadAllSubmissions(); }}
+            style={getTabButtonStyle(activeTab === 'all')}
           >
             All Results
           </button>
           <button
             onClick={() => setActiveTab('config')}
-            style={{
-              padding: '1rem 1.5rem',
-              backgroundColor: activeTab === 'config' ? '#0f62fe' : 'transparent',
-              color: activeTab === 'config' ? 'white' : '#f4f4f4',
-              border: 'none',
-              borderBottom: activeTab === 'config' ? '2px solid #0f62fe' : 'none',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600'
-            }}
+            style={getTabButtonStyle(activeTab === 'config')}
           >
             Survey Questions
           </button>
         </div>
 
-        {/* Sessions Tab Content */}
+        {/* Sessions Tab */}
         {activeTab === 'sessions' && (
           <div>
-              {/* Create Session Form */}
-              {showCreateForm ? (
-                <Tile style={{ marginBottom: '2rem', padding: '2rem' }}>
-                  <Heading style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>
-                    Create New Session
-                  </Heading>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <TextInput
-                      id="session-name"
-                      labelText="Session Name"
-                      placeholder="e.g., Q4 2024 Customer Workshop"
-                      value={newSessionName}
-                      onChange={(e) => setNewSessionName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <TextArea
-                      id="session-desc"
-                      labelText="Description (Optional)"
-                      placeholder="Add context about this survey session..."
-                      value={newSessionDesc}
-                      onChange={(e) => setNewSessionDesc(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <Button
-                      onClick={handleCreateSession}
-                      kind="primary"
-                      disabled={!newSessionName.trim()}
-                    >
-                      Create Session
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setShowCreateForm(false);
-                        setNewSessionName('');
-                        setNewSessionDesc('');
-                      }}
-                      kind="secondary"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </Tile>
-              ) : (
-                <div style={{ marginBottom: '2rem' }}>
-                  <Button
-                    onClick={() => setShowCreateForm(true)}
-                    kind="primary"
-                    renderIcon={Add}
-                  >
-                    Create New Session
+            {showCreateForm ? (
+              <Tile style={{ marginBottom: '2rem', padding: '2rem' }}>
+                <Heading style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>
+                  Create New Session
+                </Heading>
+                <div style={{ marginBottom: '1rem' }}>
+                  <TextInput
+                    id="session-name"
+                    labelText="Session Name"
+                    placeholder="e.g., Q4 2024 Customer Workshop"
+                    value={newSessionName}
+                    onChange={(e) => setNewSessionName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <TextArea
+                    id="session-desc"
+                    labelText="Description (Optional)"
+                    placeholder="Add context about this survey session..."
+                    value={newSessionDesc}
+                    onChange={(e) => setNewSessionDesc(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <Button onClick={handleCreateSession} kind="primary" disabled={!newSessionName.trim()}>
+                    Create Session
+                  </Button>
+                  <Button onClick={() => { setShowCreateForm(false); setNewSessionName(''); setNewSessionDesc(''); }} kind="secondary">
+                    Cancel
                   </Button>
                 </div>
-              )}
+              </Tile>
+            ) : (
+              <div style={{ marginBottom: '2rem' }}>
+                <Button onClick={() => setShowCreateForm(true)} kind="primary" renderIcon={Add}>
+                  Create New Session
+                </Button>
+              </div>
+            )}
 
-              {/* Sessions Table */}
-              {sessions.length > 0 ? (
-                <div style={{ 
-                  backgroundColor: '#262626',
-                  border: '1px solid #393939',
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableHeader>Session Name</TableHeader>
-                        <TableHeader>Description</TableHeader>
-                        <TableHeader>Created</TableHeader>
-                        <TableHeader>Responses</TableHeader>
-                        <TableHeader>Status</TableHeader>
-                        <TableHeader>Actions</TableHeader>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {sessions.map((session) => (
-                        <TableRow key={session.id}>
-                          <TableCell style={{ fontWeight: '600' }}>{session.name}</TableCell>
-                          <TableCell>{session.description || '-'}</TableCell>
-                          <TableCell>{new Date(session.createdAt).toLocaleDateString()}</TableCell>
-                          <TableCell>{session.responseCount}</TableCell>
-                          <TableCell>
-                            {session.isActive ? (
-                              <span style={{ 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '0.25rem',
-                                color: '#24a148'
-                              }}>
-                                <Checkmark size={16} /> Active
-                              </span>
-                            ) : (
-                              <span style={{ opacity: 0.5 }}>Ended</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                              {session.isActive && (
-                                <Button
-                                  size="sm"
-                                  kind="primary"
-                                  renderIcon={Launch}
-                                  onClick={() => handleLaunchSession(session.id)}
-                                >
+            {sessions.length > 0 ? (
+              <div style={{ backgroundColor: '#262626', border: '1px solid #393939', borderRadius: '4px', overflow: 'hidden' }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeader>Session Name</TableHeader>
+                      <TableHeader>Description</TableHeader>
+                      <TableHeader>Created</TableHeader>
+                      <TableHeader>Responses</TableHeader>
+                      <TableHeader>Status</TableHeader>
+                      <TableHeader>Actions</TableHeader>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {sessions.map((session) => (
+                      <TableRow key={session.id}>
+                        <TableCell style={{ fontWeight: '600' }}>{session.name}</TableCell>
+                        <TableCell>{session.description || '-'}</TableCell>
+                        <TableCell>{new Date(session.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{session.responseCount}</TableCell>
+                        <TableCell>
+                          {session.isActive ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: '#24a148' }}>
+                              <Checkmark size={16} /> Active
+                            </span>
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>Ended</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {session.isActive && (
+                              <>
+                                <Button size="sm" kind="primary" renderIcon={Launch} onClick={() => handleLaunchSession(session.id)}>
                                   Launch
                                 </Button>
-                              )}
-                              {session.isActive && (
-                                <Button
-                                  size="sm"
-                                  kind="tertiary"
-                                  renderIcon={StopFilled}
-                                  onClick={() => handleEndSession(session.id)}
-                                >
+                                <Button size="sm" kind="tertiary" renderIcon={StopFilled} onClick={() => handleEndSession(session.id)}>
                                   End
                                 </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                kind="ghost"
-                                renderIcon={View}
-                                onClick={() => handleViewSessionResults(session.id)}
-                              >
-                                View
-                              </Button>
-                              <Button
-                                size="sm"
-                                kind="ghost"
-                                renderIcon={TrashCan}
-                                onClick={() => handleDeleteSession(session.id)}
-                                hasIconOnly
-                                iconDescription="Delete"
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <Tile style={{ padding: '2rem', textAlign: 'center' }}>
-                  <p style={{ opacity: 0.7, marginBottom: '1rem' }}>
-                    No sessions created yet. Create your first session to get started.
-                  </p>
-                </Tile>
-              )}
-          </div>
-        )}
-
-        {/* Session Results Tab Content */}
-        {activeTab === 'results' && (
-          <div>
-            {selectedSession && (
-                <div>
-                  <div style={{ marginBottom: '2rem' }}>
-                    <Heading style={{ marginBottom: '0.5rem' }}>
-                      {selectedSession.name}
-                    </Heading>
-                    <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>
-                      {selectedSession.description || 'No description provided'}
-                    </p>
-                    <p style={{ fontSize: '0.875rem', opacity: 0.7, marginTop: '0.5rem' }}>
-                      Created: {new Date(selectedSession.createdAt).toLocaleDateString()} • 
-                      {selectedSessionSubmissions.length} {selectedSessionSubmissions.length === 1 ? 'response' : 'responses'} •
-                      Status: {selectedSession.isActive ? 'Active' : 'Ended'}
-                    </p>
-                  </div>
-
-                  {loadingResults ? (
-                    <Tile style={{ padding: '2rem' }}>
-                      <SkeletonText paragraph lineCount={5} />
-                    </Tile>
-                  ) : selectedSessionSubmissions.length > 0 ? (
-                    <>
-                      {/* AI Summary */}
-                      <AISummary 
-                        submissions={selectedSessionSubmissions}
-                        sessionId={selectedSessionId || undefined}
-                      />
-
-                      {/* Sub-tabs for results */}
-                      <div style={{ 
-                        borderBottom: '1px solid #393939',
-                        marginBottom: '2rem',
-                        display: 'flex',
-                        gap: '0'
-                      }}>
-                        <button
-                          onClick={() => setResultsSubTab('analysis')}
-                          style={{
-                            padding: '0.75rem 1.5rem',
-                            backgroundColor: resultsSubTab === 'analysis' ? '#0f62fe' : 'transparent',
-                            color: resultsSubTab === 'analysis' ? 'white' : '#f4f4f4',
-                            border: 'none',
-                            borderBottom: resultsSubTab === 'analysis' ? '2px solid #0f62fe' : 'none',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            fontWeight: '600'
-                          }}
-                        >
-                          Survey Analysis
-                        </button>
-                        <button
-                          onClick={() => setResultsSubTab('details')}
-                          style={{
-                            padding: '0.75rem 1.5rem',
-                            backgroundColor: resultsSubTab === 'details' ? '#0f62fe' : 'transparent',
-                            color: resultsSubTab === 'details' ? 'white' : '#f4f4f4',
-                            border: 'none',
-                            borderBottom: resultsSubTab === 'details' ? '2px solid #0f62fe' : 'none',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            fontWeight: '600'
-                          }}
-                        >
-                          Detailed Responses
-                        </button>
-                      </div>
-
-                      {/* Survey Analysis Tab */}
-                      {resultsSubTab === 'analysis' && (
-                        <>
-                          <div style={{ marginBottom: '3rem' }}>
-                            <Heading style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>
-                              Priority Matrix
-                            </Heading>
-                            <div style={{ marginBottom: '1rem' }}>
-                              <Legend groups={Array.from(new Set(problems.filter(p => p.questionType === 'slider' || !p.questionType).map(p => p.group)))} />
-                            </div>
-                            <ScatterPlot data={sessionAggregates} />
-                          </div>
-
-                          <ChoiceResultsChart 
-                            problems={problems}
-                            submissions={selectedSessionSubmissions}
-                          />
-                        </>
-                      )}
-
-                      {/* Detailed Responses Tab */}
-                      {resultsSubTab === 'details' && (
-                        <div>
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            marginBottom: '1.5rem' 
-                          }}>
-                            <Heading style={{ marginBottom: 0 }}>
-                              Detailed Responses
-                            </Heading>
-                            <Button
-                              onClick={() => exportToCSV(selectedSessionSubmissions)}
-                              disabled={selectedSessionSubmissions.length === 0}
-                              kind="primary"
-                              renderIcon={Download}
-                            >
-                              Download CSV
+                              </>
+                            )}
+                            <Button size="sm" kind="ghost" renderIcon={View} onClick={() => handleViewSessionResults(session.id)}>
+                              View
                             </Button>
+                            <Button size="sm" kind="ghost" renderIcon={TrashCan} onClick={() => handleDeleteSession(session.id)} hasIconOnly iconDescription="Delete" />
                           </div>
-                          <ResponsesTable 
-                            submissions={selectedSessionSubmissions} 
-                            problems={problems} 
-                          />
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <Tile style={{ padding: '2rem', textAlign: 'center' }}>
-                      <p style={{ opacity: 0.7 }}>
-                        No responses yet for this session.
-                      </p>
-                    </Tile>
-                  )}
-                </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <Tile style={{ padding: '2rem', textAlign: 'center' }}>
+                <p style={{ opacity: 0.7 }}>No sessions created yet. Create your first session to get started.</p>
+              </Tile>
             )}
           </div>
         )}
 
-        {/* All Results Tab Content */}
+        {/* Session Results Tab */}
+        {activeTab === 'results' && selectedSession && (
+          <div>
+            <div style={{ marginBottom: '2rem' }}>
+              <Heading style={{ marginBottom: '0.5rem' }}>{selectedSession.name}</Heading>
+              <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>{selectedSession.description || 'No description provided'}</p>
+              <p style={{ fontSize: '0.875rem', opacity: 0.7, marginTop: '0.5rem' }}>
+                Created: {new Date(selectedSession.createdAt).toLocaleDateString()} • 
+                {selectedSessionSubmissions.length} {selectedSessionSubmissions.length === 1 ? 'response' : 'responses'} •
+                Status: {selectedSession.isActive ? 'Active' : 'Ended'}
+              </p>
+            </div>
+
+            {loadingResults ? (
+              <Tile style={{ padding: '2rem' }}><SkeletonText paragraph lineCount={5} /></Tile>
+            ) : selectedSessionSubmissions.length > 0 ? (
+              <>
+                <AISummary submissions={selectedSessionSubmissions} sessionId={selectedSessionId || undefined} />
+                {renderSubTabs(resultsSubTab, setResultsSubTab)}
+                
+                {resultsSubTab === 'analysis' && renderAnalysis(sessionAggregates, selectedSessionSubmissions)}
+                {resultsSubTab === 'table' && renderPriorityTable(sessionAggregates)}
+                {resultsSubTab === 'details' && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                      <Heading style={{ marginBottom: 0 }}>Detailed Responses</Heading>
+                      <Button onClick={() => exportToCSV(selectedSessionSubmissions)} disabled={selectedSessionSubmissions.length === 0} kind="primary" renderIcon={Download}>
+                        Download CSV
+                      </Button>
+                    </div>
+                    <ResponsesTable submissions={selectedSessionSubmissions} problems={problems} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <Tile style={{ padding: '2rem', textAlign: 'center' }}>
+                <p style={{ opacity: 0.7 }}>No responses yet for this session.</p>
+              </Tile>
+            )}
+          </div>
+        )}
+
+        {/* All Results Tab */}
         {activeTab === 'all' && (
           <div>
             <div style={{ marginBottom: '2rem' }}>
-              <Heading style={{ marginBottom: '0.5rem' }}>
-                All Survey Results
-              </Heading>
+              <Heading style={{ marginBottom: '0.5rem' }}>All Survey Results</Heading>
               <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>
                 Aggregated data from all sessions ({allSubmissions.length} total {allSubmissions.length === 1 ? 'response' : 'responses'})
               </p>
@@ -597,110 +479,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {allSubmissions.length > 0 ? (
               <>
-                {/* AI Summary for All Results */}
                 <AISummary submissions={allSubmissions} />
-
-                {/* Sub-tabs for all results */}
-                <div style={{ 
-                  borderBottom: '1px solid #393939',
-                  marginBottom: '2rem',
-                  display: 'flex',
-                  gap: '0'
-                }}>
-                  <button
-                    onClick={() => setAllResultsSubTab('analysis')}
-                    style={{
-                      padding: '0.75rem 1.5rem',
-                      backgroundColor: allResultsSubTab === 'analysis' ? '#0f62fe' : 'transparent',
-                      color: allResultsSubTab === 'analysis' ? 'white' : '#f4f4f4',
-                      border: 'none',
-                      borderBottom: allResultsSubTab === 'analysis' ? '2px solid #0f62fe' : 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Survey Analysis
-                  </button>
-                  <button
-                    onClick={() => setAllResultsSubTab('details')}
-                    style={{
-                      padding: '0.75rem 1.5rem',
-                      backgroundColor: allResultsSubTab === 'details' ? '#0f62fe' : 'transparent',
-                      color: allResultsSubTab === 'details' ? 'white' : '#f4f4f4',
-                      border: 'none',
-                      borderBottom: allResultsSubTab === 'details' ? '2px solid #0f62fe' : 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Detailed Responses
-                  </button>
-                </div>
-
-                {/* Survey Analysis Tab */}
-                {allResultsSubTab === 'analysis' && (
-                  <>
-                    <div style={{ marginBottom: '3rem' }}>
-                      <Heading style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>
-                        Priority Matrix
-                      </Heading>
-                      <div style={{ marginBottom: '1rem' }}>
-                        <Legend groups={Array.from(new Set(problems.filter(p => p.questionType === 'slider' || !p.questionType).map(p => p.group)))} />
-                      </div>
-                      <ScatterPlot data={allAggregates} />
-                    </div>
-
-                    <ChoiceResultsChart 
-                      problems={problems}
-                      submissions={allSubmissions}
-                    />
-                  </>
-                )}
-
-                {/* Detailed Responses Tab */}
+                {renderSubTabs(allResultsSubTab, setAllResultsSubTab)}
+                
+                {allResultsSubTab === 'analysis' && renderAnalysis(allAggregates, allSubmissions)}
+                {allResultsSubTab === 'table' && renderPriorityTable(allAggregates)}
                 {allResultsSubTab === 'details' && (
                   <div>
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      marginBottom: '1.5rem' 
-                    }}>
-                      <Heading style={{ marginBottom: 0 }}>
-                        All Responses
-                      </Heading>
-                      <Button
-                        onClick={() => exportToCSV(allSubmissions)}
-                        disabled={allSubmissions.length === 0}
-                        kind="primary"
-                        renderIcon={Download}
-                      >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                      <Heading style={{ marginBottom: 0 }}>All Responses</Heading>
+                      <Button onClick={() => exportToCSV(allSubmissions)} disabled={allSubmissions.length === 0} kind="primary" renderIcon={Download}>
                         Download CSV
                       </Button>
                     </div>
-                    <ResponsesTable 
-                      submissions={allSubmissions} 
-                      problems={problems} 
-                    />
+                    <ResponsesTable submissions={allSubmissions} problems={problems} />
                   </div>
                 )}
               </>
             ) : (
               <Tile style={{ padding: '2rem', textAlign: 'center' }}>
-                <p style={{ opacity: 0.7 }}>
-                  No responses yet across all sessions.
-                </p>
+                <p style={{ opacity: 0.7 }}>No responses yet across all sessions.</p>
               </Tile>
             )}
           </div>
         )}
 
-        {/* Survey Config Tab Content */}
+        {/* Survey Config Tab */}
         {activeTab === 'config' && <ConfigEditor />}
       </div>
     </div>
   );
 };
-

@@ -38,10 +38,12 @@ export const useSurveyConfig = () => {
   const [config, setConfig] = useState<SurveyConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
   useEffect(() => {
     const loadConfig = async () => {
       try {
+        setLoading(true);
         // Try loading from API first (database)
         const API_BASE_URL = import.meta.env.VITE_API_URL || 
           (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:3001/api');
@@ -77,7 +79,11 @@ export const useSurveyConfig = () => {
     };
     
     loadConfig();
-  }, []);
+  }, [reloadTrigger]);
+
+  const reload = () => {
+    setReloadTrigger(prev => prev + 1);
+  };
 
   // Transform config to match existing Problem type
   const problems: Problem[] = config
@@ -106,7 +112,8 @@ export const useSurveyConfig = () => {
     problems,
     groupColors,
     loading,
-    error
+    error,
+    reload
   };
 };
 

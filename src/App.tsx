@@ -26,12 +26,11 @@ import { useState, useEffect } from 'react';
 const ADMIN_PASSWORD = 'admin2024';
 
 function AppShell() {
-  const { config, problems, groupColors, loading, error } = useSurveyConfig();
+  const { config, problems, groupColors, loading, error, reload } = useSurveyConfig();
   const location = useLocation();
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [configVersion, setConfigVersion] = useState(0);
 
   // Check auth status
   useEffect(() => {
@@ -163,10 +162,10 @@ function AppShell() {
                   window.open(`/survey/${sessionId}`, '_blank');
                 }}
                 onConfigUpdate={() => {
-                  window.location.reload();
+                  reload();
                 }}
                 onReloadConfig={() => {
-                  window.location.reload();
+                  reload();
                 }}
               />
             } 
